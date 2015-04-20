@@ -1,0 +1,9 @@
+Package: com.joshdoctors.prism
+Name: Prism
+Depends: mobilesubstrate,org.thebigboss.libcolorpicker
+Version: 0.0.1
+Architecture: iphoneos-arm
+Description: An awesome MobileSubstrate tweak!
+Maintainer: Josh Doctors
+Author: Josh Doctors
+Section: Tweaks

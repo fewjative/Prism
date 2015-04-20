@@ -1,0 +1,10 @@
+{
+    entry = {
+	bundle = PrismSettings;
+	cell = PSLinkCell;
+	detail = PrismSettingsListController;
+	icon = PrismSettings.png;
+	isController = 1;
+	label = PrismSettings;
+    };
+}
