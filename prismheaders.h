@@ -13,8 +13,12 @@
 +(MusicAVPlayer*)sharedAVPlayer;
 @end
 
-@interface MARemoteController
+@interface MusicRemoteController
 -(MusicAVPlayer*)player;
+@end
+
+@interface MusicApplicationDelegate
+-(MusicRemoteController*)remoteController;
 @end
 
 @interface SBLockScreenManager : NSObject
@@ -39,9 +43,14 @@
 @interface MPAVController
 -(MPAVItem*)currentItem;
 -(void)addAudioTap:(MPAVItem*)item;
+-(void)generatePrismColors;
 @end
 
 
 @interface _NowPlayingArtView : UIView
 -(UIImageView*)artworkView;
+@end
+
+@interface MusicArtworkView : UIView
+-(void)generatePrismColors;
 @end

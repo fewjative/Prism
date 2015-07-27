@@ -5,11 +5,15 @@
 //  Created by Josh Doctors on 2/28/2015.
 //  Copyright (c) 2015 Josh Doctors. All rights reserved.
 //
+#import <Foundation/NSDistributedNotificationCenter.h>
+#import <AppSupport/AppSupport.h>
+#import "rocketbootstrap.h"
 
 @interface BeatVisualizerView : UIView
 
 -(void)updateWithLevel:(CGFloat)level withData:(NSMutableArray*)data withMag:(double)mag withVol:(CGFloat)vol withType:(CGFloat)type;
 +(instancetype)sharedInstance;
+-(void)toggleVisibility;
 
 @property (nonatomic, strong) UIColor *primaryColor;
 @property (nonatomic, strong) UIColor *secondaryColor;
@@ -25,7 +29,7 @@
 @property (nonatomic, assign) CGFloat type;
 @property (nonatomic, assign) bool useColorFlow;
 @property (nonatomic, assign) bool usePrismFlow;
-@property (nonatomic, assign) NSInteger overlayAlbumArt;
+@property (nonatomic, assign) bool overlayAlbumArt;
 @property (nonatomic, assign) NSInteger numBars;
 @property (nonatomic, assign) double mag;
 @property (nonatomic, assign) double sum;
@@ -47,4 +51,5 @@
 @property (nonatomic, assign) NSUInteger numberOfWaves;
 @property (nonatomic, assign) NSInteger displayWave;
 @property (nonatomic, assign) NSInteger spectrumStyle;
+@property (nonatomic, assign) bool isVisible;
 @end

@@ -5,7 +5,7 @@ BUNDLE_NAME = PrismSettings
 PrismSettings_FILES = PrismSettings.mm
 PrismSettings_INSTALL_PATH = /Library/PreferenceBundles
 PrismSettings_FRAMEWORKS = UIKit
-PrismSettings_PRIVATE_FRAMEWORKS = Preferences
+PrismSettings_PRIVATE_FRAMEWORKS = Preferences Social
 PrismSettings_LIBRARIES = colorpicker
 
 include $(THEOS_MAKE_PATH)/bundle.mk

@@ -1,7 +1,11 @@
 #import <Preferences/Preferences.h>
+#import <Social/SLComposeViewController.h>
+#import <Social/SLServiceTypes.h>
 #import <UIKit/UIKit.h>
+#define prefPath @"/User/Library/Preferences/com.joshdoctors.prism.plist"
+#define kRespringAlertTag 854
 
-@interface PrismSettingsListController: PSListController {
+@interface PrismSettingsListController: PSEditableListController {
 }
 @end
 
@@ -21,7 +25,18 @@ static PrismSettingsListController * pslc = nil;
 -(void)twitter {
 
 	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://mobile.twitter.com/Fewjative"]];
+}
 
+
+-(id)_editButtonBarItem{
+	return [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCompose target:self action:@selector(composeTweet:)];
+}
+
+-(void)composeTweet:(id)sender
+{
+	SLComposeViewController * composeController = [SLComposeViewController composeViewControllerForServiceType:SLServiceTypeTwitter];
+	[composeController setInitialText:@"I'm rocking out with the visualizers in #Prism by @Fewjative!"];
+	[self presentViewController:composeController animated:YES completion:nil];
 }
 
 -(void)save
@@ -29,61 +44,42 @@ static PrismSettingsListController * pslc = nil;
     [self.view endEditing:YES];
 }
 
--(void)setPreferenceValue:(id)value specifier:(id)spec{
-	[super setPreferenceValue:value specifier:spec];
-	if([[spec name] isEqualToString:@"ColorFlow Generated Colors"])
-	{
-		bool b = [value boolValue];
-		if(!b)
-			return;
+-(void)respring
+{
+	UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Respring"
+		message:@"Are you sure you want to respring?"
+		delegate:self     
+		cancelButtonTitle:@"No" 
+		otherButtonTitles:@"Yes", nil];
+	alert.tag = kRespringAlertTag;
+	[alert show];
+	[alert release];
+}
 
-		PSSpecifier * PFspec = [self specifierForID:@"prismFlowSwitch"];
-		b = !CFPreferencesCopyAppValue(CFSTR("usePrismFlow"), CFSTR("com.joshdoctors.prism")) ? NO : [(id)CFPreferencesCopyAppValue(CFSTR("usePrismFlow"), CFSTR("com.joshdoctors.prism")) boolValue];
-    
-		if(!b)
-			return;
+- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex {
+    if (buttonIndex == 1) {
+    	if (alertView.tag == kRespringAlertTag) {
+    		system("killall backboardd");
+    	}
+    }
+}
 
-		[super setPreferenceValue:@(NO) specifier:PFspec];
-		[self reloadSpecifier:PFspec animated:YES];
-
-    	CFPreferencesSetAppValue(CFSTR("prismFlowSwitch"), CFSTR("0"), CFSTR("com.joshdoctors.prism"));
-
-    	CFPreferencesAppSynchronize(CFSTR("com.joshdoctors.prism"));
-    		CFNotificationCenterPostNotification(
-    			CFNotificationCenterGetDarwinNotifyCenter(),
-    			CFSTR("com.joshdoctors.prism/settingschanged"),
-    			NULL,
-    			NULL,
-    			YES
-    			);
+-(id) readPreferenceValue:(PSSpecifier*)specifier {
+	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
+	if (!settings[specifier.properties[@"key"]]) {
+		return specifier.properties[@"default"];
 	}
-	else if([[spec name] isEqualToString:@"Prism Generated Colors"])
-	{
-		bool b = [value boolValue];
-
-		if(!b)
-			return;
-
-		PSSpecifier * CFspec = [self specifierForID:@"colorFlowSwitch"];
-		b = !CFPreferencesCopyAppValue(CFSTR("useColorFlow"), CFSTR("com.joshdoctors.prism")) ? NO : [(id)CFPreferencesCopyAppValue(CFSTR("useColorFlow"), CFSTR("com.joshdoctors.prism")) boolValue];
-    
-		if(!b)
-			return;
-
-		[super setPreferenceValue:@(NO) specifier:CFspec];
-		[self reloadSpecifier:CFspec animated:YES];
-
-		CFPreferencesSetAppValue(CFSTR("colorFlowSwitch"), CFSTR("0"), CFSTR("com.joshdoctors.prism"));
-
-		CFPreferencesAppSynchronize(CFSTR("com.joshdoctors.prism"));
-    		CFNotificationCenterPostNotification(
-    			CFNotificationCenterGetDarwinNotifyCenter(),
-    			CFSTR("com.joshdoctors.prism/settingschanged"),
-    			NULL,
-    			NULL,
-    			YES
-    			);
-	}
+	return settings[specifier.properties[@"key"]];
+}
+ 
+-(void) setPreferenceValue:(id)value specifier:(PSSpecifier*)specifier {
+	NSMutableDictionary *defaults = [NSMutableDictionary dictionary];
+	[defaults addEntriesFromDictionary:[NSDictionary dictionaryWithContentsOfFile:prefPath]];
+	[defaults setObject:value forKey:specifier.properties[@"key"]];
+	[defaults writeToFile:prefPath atomically:YES];
+	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
+	CFStringRef toPost = (CFStringRef)specifier.properties[@"PostNotification"];
+	if(toPost) CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), toPost, NULL, NULL, YES);
 }
 
 @end
@@ -107,6 +103,24 @@ static PrismSettingsListController * pslc = nil;
     [self.view endEditing:YES];
 }
 
+-(id) readPreferenceValue:(PSSpecifier*)specifier {
+	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
+	if (!settings[specifier.properties[@"key"]]) {
+		return specifier.properties[@"default"];
+	}
+	return settings[specifier.properties[@"key"]];
+}
+ 
+-(void) setPreferenceValue:(id)value specifier:(PSSpecifier*)specifier {
+	NSMutableDictionary *defaults = [NSMutableDictionary dictionary];
+	[defaults addEntriesFromDictionary:[NSDictionary dictionaryWithContentsOfFile:prefPath]];
+	[defaults setObject:value forKey:specifier.properties[@"key"]];
+	[defaults writeToFile:prefPath atomically:YES];
+	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
+	CFStringRef toPost = (CFStringRef)specifier.properties[@"PostNotification"];
+	if(toPost) CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), toPost, NULL, NULL, YES);
+}
+
 @end
 
 @interface SpectrumSettingsListController: PSListController {
@@ -128,6 +142,24 @@ static PrismSettingsListController * pslc = nil;
     [self.view endEditing:YES];
 }
 
+-(id) readPreferenceValue:(PSSpecifier*)specifier {
+	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
+	if (!settings[specifier.properties[@"key"]]) {
+		return specifier.properties[@"default"];
+	}
+	return settings[specifier.properties[@"key"]];
+}
+ 
+-(void) setPreferenceValue:(id)value specifier:(PSSpecifier*)specifier {
+	NSMutableDictionary *defaults = [NSMutableDictionary dictionary];
+	[defaults addEntriesFromDictionary:[NSDictionary dictionaryWithContentsOfFile:prefPath]];
+	[defaults setObject:value forKey:specifier.properties[@"key"]];
+	[defaults writeToFile:prefPath atomically:YES];
+	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
+	CFStringRef toPost = (CFStringRef)specifier.properties[@"PostNotification"];
+	if(toPost) CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), toPost, NULL, NULL, YES);
+}
+
 @end
 
 @interface SiriSettingsListController: PSListController {
@@ -147,6 +179,24 @@ static PrismSettingsListController * pslc = nil;
 -(void)save
 {
     [self.view endEditing:YES];
+}
+
+-(id) readPreferenceValue:(PSSpecifier*)specifier {
+	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
+	if (!settings[specifier.properties[@"key"]]) {
+		return specifier.properties[@"default"];
+	}
+	return settings[specifier.properties[@"key"]];
+}
+ 
+-(void) setPreferenceValue:(id)value specifier:(PSSpecifier*)specifier {
+	NSMutableDictionary *defaults = [NSMutableDictionary dictionary];
+	[defaults addEntriesFromDictionary:[NSDictionary dictionaryWithContentsOfFile:prefPath]];
+	[defaults setObject:value forKey:specifier.properties[@"key"]];
+	[defaults writeToFile:prefPath atomically:YES];
+	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
+	CFStringRef toPost = (CFStringRef)specifier.properties[@"PostNotification"];
+	if(toPost) CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), toPost, NULL, NULL, YES);
 }
 
 @end

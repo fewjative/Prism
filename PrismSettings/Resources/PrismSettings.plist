@@ -92,6 +92,30 @@
             <key>color_postNotification</key>
             <string>com.joshdoctors.prism/settingschanged</string>
         </dict>
+        <dict>
+        	<key>cell</key>
+        	<string>PSGroupCell</string>
+        	<key>footerText</key>
+        	<string>The higher the slider value, the more visible the visualizer. Default is 100. Perform a respring after enabling or disabling the tweak.</string>
+        </dict>
+        <dict>
+        	<key>cell</key>
+        	<string>PSSliderCell</string>
+        	<key>default</key>
+        	<integer>100</integer>
+        	<key>showValue</key>
+        	<true/>
+        	<key>max</key>
+        	<integer>100</integer>
+        	<key>min</key>
+        	<integer>0</integer>
+        	<key>PostNotification</key>
+        	<string>com.joshdoctors.prism/settingschanged</string>
+        	<key>defaults</key>
+        	<string>com.joshdoctors.prism</string>
+        	<key>key</key>
+        	<string>transparency</string>
+        </dict>
 		<dict>
 			<key>PostNotification</key>
 			<string>com.joshdoctors.prism/settingschanged</string>
@@ -103,13 +127,11 @@
  			<key>validTitles</key> <array>
  				<string>Beat</string>
  				<string>Spectrum</string>
- 				<string>Siri</string>
  			</array>
  			<key>validValues</key>
  			<array>
 				<real>0</real>
  				<real>1</real>
- 				<real>2</real>
  			</array>
  			<key>id</key>
 			<string>themeList</string>
@@ -143,19 +165,10 @@
 			<string>Spectrum Settings</string>
 		</dict>
 		<dict>
-			<key>cell</key>
-			<string>PSLinkCell</string>
-			<key>detail</key>
-			<string>SiriSettingsListController</string>
-			<key>icon</key>
-			<string>backgroundicon@2x.png</string>
-			<key>isController</key>
-			<true/>
-			<key>key</key>
-			<string>SiriSettings</string>
-			<key>label</key>
-			<string>Siri Settings</string>
-		</dict>
+            <key>cell</key>             <string>PSButtonCell</string>
+            <key>label</key>            <string>Respring</string>
+            <key>action</key>           <string>respring</string>
+        </dict>
 	</array>
 	<key>title</key>
 	<string>Options</string>

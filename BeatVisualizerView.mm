@@ -1,6 +1,7 @@
 #import "BeatVisualizerView.h"
 #import "MeterTable.h"
 
+
 static UIColor* colorWithString(NSString * stringToConvert)
 {
     NSString *cString = [stringToConvert stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -105,6 +106,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
     self.primaryWaveLineWidth = 3.0f;
     self.secondaryWaveLineWidth = 1.0f;
     self.spectrumStyle = 0;
+    self.isVisible = NO;
 
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"ColorFlowMusicAppColorReversionNotification" object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"ColorFlowMusicAppColorizationNotification" object:nil];
@@ -161,6 +163,10 @@ static UIColor* colorWithString(NSString * stringToConvert)
     self.colorFlowSecondary = userInfo[@"SecondaryColor"];
 }
 
+-(void)toggleVisibility {
+    self.isVisible = !self.isVisible;
+}
+
 -(void)updateWithLevel:(CGFloat)level withData:(NSMutableArray*)data withMag:(double)mag withVol:(CGFloat)vol withType:(CGFloat)type
 {
     self.phase += self.phaseShift;
@@ -192,24 +198,21 @@ static UIColor* colorWithString(NSString * stringToConvert)
     }
 
     self.priorAmplitude = self.amplitude;
-
-    NSUserDefaults* prefs = [NSUserDefaults standardUserDefaults];
-    NSDictionary * prismDict = [prefs persistentDomainForName:@"com.joshdoctors.prismpersistent"];
-    self.prismFlowPrimary = colorWithString([prismDict objectForKey:@"prismFlowPrimary"]);
-    self.prismFlowSecondary = colorWithString([prismDict objectForKey:@"prismFlowSecondary"]);
-
     [self setNeedsDisplay];
 }
 
 - (void)drawRect:(CGRect)rect
 {    
+    if(!self.isVisible)
+        return;
+
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGContextClearRect(context, self.bounds);
     
-    if(self.overlayAlbumArt==0)
-        [self.backgroundColor set];
-    else
+    if(self.overlayAlbumArt)
         [self.overlayColor set];
+    else
+        [self.backgroundColor set];
 
     CGContextFillRect(context, rect);
 
