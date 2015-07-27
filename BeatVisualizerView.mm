@@ -398,58 +398,6 @@ static UIColor* colorWithString(NSString * stringToConvert)
             [barPath fill];
         }
     }
-    else if(self.type==2.0)
-    {          
-        // We draw multiple sinus waves, with equal phases but altered amplitudes, multiplied by a parable function.
-        for(int i=0; i < self.numberOfWaves; i++) {
-            
-            CGContextRef context = UIGraphicsGetCurrentContext();
-            
-            CGContextSetLineWidth(context, (i==0 ? self.primaryWaveLineWidth : self.secondaryWaveLineWidth));
-            
-            CGFloat halfHeight = CGRectGetHeight(self.bounds) / 2.0f;
-            CGFloat width = CGRectGetWidth(self.bounds);
-            CGFloat mid = width / 2.0f;
-            
-            const CGFloat maxAmplitude = halfHeight - 4.0f; // 4 corresponds to twice the stroke width
-            
-            // Progress is a value between 1.0 and -0.5, determined by the current wave idx, which is used to alter the wave's amplitude.
-            CGFloat progress = 1.0f - (CGFloat)i / self.numberOfWaves;
-            CGFloat normedAmplitude = (1.5f * progress - 0.5f) * self.siriAmplitude;
-            
-            CGFloat multiplier = MIN(1.0, (progress / 3.0f * 2.0f) + (1.0f / 3.0f));
-
-            if(self.useColorFlow)
-            {
-                [[self.colorFlowSecondary colorWithAlphaComponent:multiplier * CGColorGetAlpha(self.colorFlowSecondary.CGColor)] set];
-            }
-            else if(self.usePrismFlow)
-            {
-                [[self.prismFlowSecondary colorWithAlphaComponent:multiplier * CGColorGetAlpha(self.prismFlowSecondary.CGColor)] set];
-            }
-            else
-            {
-                [[self.secondaryColor colorWithAlphaComponent:multiplier * CGColorGetAlpha(self.secondaryColor.CGColor)] set];
-            }
-
-            for(CGFloat x = 0; x<width + self.density; x += self.density) {
-                
-                // We use a parable to scale the sinus wave, that has its peak in the middle of the view.
-                CGFloat scaling = -pow(1 / mid * (x - mid), 2) + 1;
-                            
-                CGFloat y = scaling * maxAmplitude * normedAmplitude * sinf(2 * M_PI *(x / width) * self.frequency + self.phase) + halfHeight;
-                
-                if (x==0) {
-                    CGContextMoveToPoint(context, x, y);
-                }
-                else {
-                    CGContextAddLineToPoint(context, x, y);
-                }
-            }
-            
-            CGContextStrokePath(context);
-        }
-    }
     else
     {
         NSLog(@"[Prism]Not a valid type");

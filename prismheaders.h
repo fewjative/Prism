@@ -17,6 +17,10 @@
 -(MusicAVPlayer*)player;
 @end
 
+@interface MARemoteController
+-(MusicAVPlayer*)player;
+@end
+
 @interface MusicApplicationDelegate
 -(MusicRemoteController*)remoteController;
 @end
@@ -33,6 +37,7 @@
 -(NSString*)placeholderSubTitle;
 -(void)setPlaceholderTitle:(NSString*)str;
 -(void)setPlaceholderSubtitle:(NSString*)str;
+-(void)generatePrismColors;
 @end
 
 @interface MPAVItem

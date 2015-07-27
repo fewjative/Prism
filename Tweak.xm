@@ -1,5 +1,6 @@
 #import <substrate.h>
 #import <QuartzCore/QuartzCore.h>
+#import <Foundation/Foundation.h>
 #import <Foundation/NSDistributedNotificationCenter.h>
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioServices.h>
@@ -19,6 +20,7 @@
 #define kDefaultBlackColor [[UIColor alloc] initWithRed:0.0f green:0.0f blue:0.0f alpha:1.0f]
 #define kDefaultRedColor [[UIColor alloc] initWithRed:1.0f green:0.0f blue:0.0f alpha:1.0f]
 #define prefPath @"/User/Library/Preferences/com.joshdoctors.prism.plist"
+#define SYSTEM_VERSION_EQUAL_TO(v) ([[[UIDevice currentDevice] systemVersion] compare:v options: 64] == NSOrderedSame)
 
 typedef struct AVAudioTapProcessorContext {
     Boolean supportedTapProcessingFormat;
@@ -290,9 +292,18 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	if(!tweakEnabled)
 		return;
 
-	MusicApplicationDelegate * del = (MusicApplicationDelegate*)[[UIApplication sharedApplication] delegate];
-	MusicRemoteController * rc = [del remoteController];
-	MusicAVPlayer * mp = [rc player];
+	MusicAVPlayer * mp  = NULL;
+	if( SYSTEM_VERSION_EQUAL_TO(@"8.4"))
+	{
+		MusicApplicationDelegate * del = (MusicApplicationDelegate*)[[UIApplication sharedApplication] delegate];
+		MusicRemoteController * rc = [del remoteController];
+		mp = [rc player];
+	}
+	else
+	{
+		MARemoteController * rc = [[UIApplication sharedApplication] remoteController];
+		mp = [rc player];
+	}
 
 	if([mp rate]==0)
 	{
@@ -367,6 +378,136 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 %end
 
+%hook MPUSlantedTextPlaceholderArtworkView
+
+-(void)setPlaceholderTitle:(NSString*)title{
+
+	%orig;
+
+	if(!tweakEnabled)
+	{
+		NSLog(@"[Prism]Tweak was not enabled, not adding Visualizer.");
+		return;
+	}
+
+	UIView * superview = [self superview];
+
+	if(!superview)
+		return;
+
+	UIViewController * vc = MSHookIvar<UIViewController*>(superview,"_viewDelegate");
+
+	if(vc && [vc isKindOfClass:[%c(MusicNowPlayingViewController) class]])
+	{
+		[self generatePrismColors];
+
+		NSLog(@"[Prism]setPlaceholderTitle");
+		for (UIView * view in self.subviews) {
+	    	if([view isKindOfClass:[%c(BeatVisualizerView) class]])
+	    		return;
+	    }
+
+		[[BeatVisualizerView sharedInstance] setFrame:self.bounds];
+		NSLog(@"[Prism]Added BeatVisualizerView to the Music App");
+	    [self addSubview:[BeatVisualizerView sharedInstance]];
+
+	    for (UIGestureRecognizer * recognizer in self.gestureRecognizers) {
+	    	[self removeGestureRecognizer:recognizer];
+	    }
+
+	    UIGestureRecognizer * tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toggleVisualizerVisibility:)];
+	    [self setUserInteractionEnabled:YES];
+	    [self addGestureRecognizer:tap];
+	}
+}
+
+%new - (void)toggleVisualizerVisibility:(UITapGestureRecognizer*)sender {
+	[[BeatVisualizerView sharedInstance] toggleVisibility];
+}
+
+-(void)_setTouchHighlighted:(BOOL)b animated:(BOOL)b2 {
+	%orig(NO, NO);
+}
+
+%new - (void)generatePrismColors {
+	MRMediaRemoteGetNowPlayingInfo(dispatch_get_main_queue(), ^(CFDictionaryRef result)
+	{
+		NSLog(@"[Prism]Getting info dictionary");
+		NSDictionary * dict = (__bridge NSDictionary*)result;
+
+		if(!dict)
+		{
+			NSLog(@"[Prism]Dictionary is nil");
+			return;
+		}
+
+		NSString * trackTitle = [dict objectForKey:(__bridge NSString*)kMRMediaRemoteNowPlayingInfoTitle];
+
+		if(!trackTitle)
+		{
+			NSLog(@"[Prism]TrackTitle is nil");
+			return;
+		}
+		
+		if(!cachedTitle)
+		{
+			NSLog(@"[Prism]Cached is nil");
+			cachedTitle = [[NSString alloc] init];
+		}
+		else
+		{
+			if([trackTitle isEqualToString:cachedTitle])
+			{
+				NSLog(@"[Prism]The track colors have already been generated");
+				return;
+			}
+		}
+
+		UIImage * image = [UIImage imageWithData:[dict objectForKey:(__bridge NSData*)kMRMediaRemoteNowPlayingInfoArtworkData]];
+
+		if(!image)
+		{
+			NSLog(@"[Prism]Image is nil");
+			return;
+		}
+
+		LEColorPicker * colorPicker = [[LEColorPicker alloc] init];
+		LEColorScheme *colorScheme = [colorPicker colorSchemeFromImage:image];
+		NSLog(@"[Prism] Valid Image %@ and scheme: %@", image, colorScheme);
+
+		int numComponents = CGColorGetNumberOfComponents([[colorScheme backgroundColor] CGColor]);
+		if(numComponents==4)
+		{
+			const CGFloat * components = CGColorGetComponents([[colorScheme backgroundColor] CGColor]);
+			prismFlowPrimary = [UIColor colorWithRed:components[0] green:components[1] blue:components[2] alpha:components[3]];
+		}
+		numComponents = CGColorGetNumberOfComponents([[colorScheme primaryTextColor] CGColor]);
+		if(numComponents==4)
+		{
+			const CGFloat * components = CGColorGetComponents([[colorScheme primaryTextColor] CGColor]);
+			prismFlowSecondary = [UIColor colorWithRed:components[0] green:components[1] blue:components[2] alpha:components[3]];
+		}
+
+		if(!prismFlowPrimary || !prismFlowSecondary)
+		{
+			NSLog(@"[Prism]One of the colors is nil");
+			return;
+		}
+
+		[[BeatVisualizerView sharedInstance] setPrismFlowPrimary:prismFlowPrimary];
+		[[BeatVisualizerView sharedInstance] setPrismFlowSecondary:prismFlowSecondary];
+
+		NSLog(@"[Prism]Colors have been generated, reassigning the cache and releasing.");
+		if(cachedTitle)cachedTitle = nil;
+		cachedTitle = [NSString stringWithFormat:@"%@", trackTitle];
+		NSLog(@"[Prism]cachedTitle is %@ and trackTitle is %@ (should be same)", cachedTitle, trackTitle);
+		colorScheme = nil;
+		colorPicker = nil;
+	});
+}
+
+%end
+
 %hook MusicArtworkView
 
 - (id)layoutSubviews
@@ -380,9 +521,14 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	}
 
 	UIView * superview = [self superview];
-	UIViewController * vc = MSHookIvar<UIViewController*>(superview,"_viewDelegate");
 
-	NSLog(@"[Prism]VC: %@", vc);
+	if(!superview)
+	{
+		NSLog(@"[Prism]Superview was null.");
+		return orig;
+	}
+
+	UIViewController * vc = MSHookIvar<UIViewController*>(superview,"_viewDelegate");
 
 	if(vc && [vc isKindOfClass:[%c(MusicNowPlayingItemViewController) class]])
 	{
@@ -421,6 +567,13 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	}
 
 	UIView * superview = [self superview];
+
+	if(!superview)
+	{
+		NSLog(@"[Prism]Superview is null");
+		return;
+	}
+	
 	UIViewController * vc = MSHookIvar<UIViewController*>(superview,"_viewDelegate");
 
 	if(vc && [vc isKindOfClass:[%c(MusicNowPlayingItemViewController) class]])

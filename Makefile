@@ -4,7 +4,7 @@ include theos/makefiles/common.mk
 TWEAK_NAME = Prism
 Prism_CFLAGS = -fobjc-arc
 Prism_FILES = Tweak.xm MeterTable.cpp BeatVisualizerView.mm LEColorPicker.m
-Prism_FRAMEWORKS = UIKit AVFoundation QuartzCore CoreFoundation CoreGraphics CoreMedia CoreAudio AudioToolbox MediaToolbox Accelerate OpenGLES
+Prism_FRAMEWORKS = UIKit AVFoundation QuartzCore CoreGraphics CoreMedia CoreAudio AudioToolbox MediaToolbox Accelerate OpenGLES Foundation
 Prism_PRIVATE_FRAMEWORKS = AppSupport MediaRemote
 Prism_LIBRARIES = rocketbootstrap
 

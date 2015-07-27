@@ -27,7 +27,6 @@ static PrismSettingsListController * pslc = nil;
 	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://mobile.twitter.com/Fewjative"]];
 }
 
-
 -(id)_editButtonBarItem{
 	return [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCompose target:self action:@selector(composeTweet:)];
 }
@@ -93,7 +92,6 @@ static PrismSettingsListController * pslc = nil;
     if(_specifiers == nil) {
      
             _specifiers = [[self loadSpecifiersFromPlistName:@"BeatSettings" target:self] retain];    
-
     }
     return _specifiers;
 }
@@ -132,45 +130,6 @@ static PrismSettingsListController * pslc = nil;
     if(_specifiers == nil) {
      
             _specifiers = [[self loadSpecifiersFromPlistName:@"SpectrumSettings" target:self] retain];    
-
-    }
-    return _specifiers;
-}
-
--(void)save
-{
-    [self.view endEditing:YES];
-}
-
--(id) readPreferenceValue:(PSSpecifier*)specifier {
-	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
-	if (!settings[specifier.properties[@"key"]]) {
-		return specifier.properties[@"default"];
-	}
-	return settings[specifier.properties[@"key"]];
-}
- 
--(void) setPreferenceValue:(id)value specifier:(PSSpecifier*)specifier {
-	NSMutableDictionary *defaults = [NSMutableDictionary dictionary];
-	[defaults addEntriesFromDictionary:[NSDictionary dictionaryWithContentsOfFile:prefPath]];
-	[defaults setObject:value forKey:specifier.properties[@"key"]];
-	[defaults writeToFile:prefPath atomically:YES];
-	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
-	CFStringRef toPost = (CFStringRef)specifier.properties[@"PostNotification"];
-	if(toPost) CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), toPost, NULL, NULL, YES);
-}
-
-@end
-
-@interface SiriSettingsListController: PSListController {
-}
-@end
-
-@implementation SiriSettingsListController
-- (id)specifiers {
-    if(_specifiers == nil) {
-     
-            _specifiers = [[self loadSpecifiersFromPlistName:@"SiriSettings" target:self] retain];    
 
     }
     return _specifiers;
