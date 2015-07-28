@@ -77,6 +77,9 @@ static UIColor* colorWithString(NSString * stringToConvert)
     self.colorFlowSecondary = [UIColor redColor];
     self.prismFlowPrimary = [UIColor blackColor];
     self.prismFlowSecondary = [UIColor redColor];
+    self.beatPrimaryColor = [UIColor blackColor];
+    self.beatSecondaryColor = [UIColor redColor];
+    self.spectrumPrimaryColor = [UIColor redColor];
 
     self.backgroundColor = [UIColor clearColor];
     self.overlayColor = [UIColor whiteColor];
@@ -198,7 +201,20 @@ static UIColor* colorWithString(NSString * stringToConvert)
     }
 
     self.priorAmplitude = self.amplitude;
+    [self setColors];
     [self setNeedsDisplay];
+}
+
+-(void)setColors {
+    if(self.type == 0.0)
+    {
+        self.primaryColor = self.beatPrimaryColor;
+        self.secondaryColor = self.beatSecondaryColor;
+    }
+    else if(self.type == 1.0)
+    {
+        self.primaryColor = self.spectrumPrimaryColor;
+    }
 }
 
 - (void)drawRect:(CGRect)rect
@@ -244,7 +260,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
             CGRect circlePoint = CGRectMake((rect.size.width/2.0)-(self.scaled_avg/2.0), rect.size.height/2.0-(self.scaled_avg/2.0), self.scaled_avg, self.scaled_avg);
             
-             if(self.useColorFlow)
+            if(self.useColorFlow)
             {
                 [[self.colorFlowSecondary colorWithAlphaComponent:.4f] setFill];
             }

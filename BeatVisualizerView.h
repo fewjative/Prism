@@ -21,15 +21,18 @@
 @property (nonatomic, strong) UIColor *colorFlowSecondary;
 @property (nonatomic, strong) UIColor *prismFlowPrimary;
 @property (nonatomic, strong) UIColor *prismFlowSecondary;
+@property (nonatomic, strong) UIColor *beatPrimaryColor;
+@property (nonatomic, strong) UIColor *beatSecondaryColor;
+@property (nonatomic, strong) UIColor *spectrumPrimaryColor;
 
 @property (nonatomic, strong) UIColor *overlayColor;
 @property (nonatomic, strong) NSMutableArray *waves;
 @property (nonatomic, strong) NSMutableArray *outData;
 @property (nonatomic, assign) CGFloat primaryWaveLineWidth;
 @property (nonatomic, assign) CGFloat type;
-@property (nonatomic, assign) bool useColorFlow;
-@property (nonatomic, assign) bool usePrismFlow;
-@property (nonatomic, assign) bool overlayAlbumArt;
+@property (nonatomic, assign) BOOL useColorFlow;
+@property (nonatomic, assign) BOOL usePrismFlow;
+@property (nonatomic, assign) BOOL overlayAlbumArt;
 @property (nonatomic, assign) NSInteger numBars;
 @property (nonatomic, assign) double mag;
 @property (nonatomic, assign) double sum;
@@ -44,12 +47,12 @@
 @property (nonatomic, assign) CGFloat siriAmplitude;
 @property (nonatomic, assign) CGFloat priorAmplitude;
 @property (nonatomic, assign) CGFloat waveThreshold;
-@property (nonatomic, assign) bool createWave;
+@property (nonatomic, assign) BOOL createWave;
 @property (nonatomic, assign) CGFloat density;
 @property (nonatomic, assign) CGFloat phaseShift;
 @property (nonatomic, assign) CGFloat phase;
 @property (nonatomic, assign) NSUInteger numberOfWaves;
 @property (nonatomic, assign) NSInteger displayWave;
 @property (nonatomic, assign) NSInteger spectrumStyle;
-@property (nonatomic, assign) bool isVisible;
+@property (nonatomic, assign) BOOL isVisible;
 @end

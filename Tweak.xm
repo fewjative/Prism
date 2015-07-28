@@ -20,7 +20,6 @@
 #define kDefaultBlackColor [[UIColor alloc] initWithRed:0.0f green:0.0f blue:0.0f alpha:1.0f]
 #define kDefaultRedColor [[UIColor alloc] initWithRed:1.0f green:0.0f blue:0.0f alpha:1.0f]
 #define prefPath @"/User/Library/Preferences/com.joshdoctors.prism.plist"
-#define SYSTEM_VERSION_EQUAL_TO(v) ([[[UIDevice currentDevice] systemVersion] compare:v options: 64] == NSOrderedSame)
 
 typedef struct AVAudioTapProcessorContext {
     Boolean supportedTapProcessingFormat;
@@ -250,7 +249,13 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	if([%c(MusicAVPlayer) sharedAVPlayer]==nil)
 		return;
 
-	AVAssetTrack * audioTrack = [[[[item playerItem] asset] tracks] objectAtIndex:0];
+	AVAssetTrack * audioTrack;
+
+	if([[[[item playerItem] asset] tracks] count] == 0 )
+		return;
+
+	audioTrack = [[[[item playerItem] asset] tracks] objectAtIndex:0];
+
 	AVMutableAudioMixInputParameters *inputParams = [AVMutableAudioMixInputParameters audioMixInputParametersWithTrack:audioTrack];
 
 	NSLog(@"[Prism]Creating the audio tap");
@@ -293,7 +298,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 		return;
 
 	MusicAVPlayer * mp  = NULL;
-	if( SYSTEM_VERSION_EQUAL_TO(@"8.4"))
+	if( [[[UIDevice currentDevice] systemVersion] isEqualToString:@"8.4"])
 	{
 		MusicApplicationDelegate * del = (MusicApplicationDelegate*)[[UIApplication sharedApplication] delegate];
 		MusicRemoteController * rc = [del remoteController];
@@ -342,6 +347,9 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		int appState = [[UIApplication sharedApplication] applicationState];
 
+		//state = 0 -> inside the app
+		//state = 1 -> on the springboard
+		//state = 2 -> on the lockscreen
 		if(appState!=2)//appState = 0 when we are in the app, thus update
 		{
 			[[BeatVisualizerView sharedInstance] setAlpha:(transparency/100.0)];
@@ -358,9 +366,13 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 -(void)_itemDidChange:(id)arg1{
 	%orig;
+	NSLog(@"[Prism]Changing the item.");
 
 	if(!tweakEnabled)
+	{
+		NSLog(@"[Prism]Tweak was not enabled, not tapping into the audio stream.");
 		return;
+	}
 
 	item = self.currentItem;
 
@@ -430,6 +442,11 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 }
 
 %new - (void)generatePrismColors {
+
+	[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
+	[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
+	[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
+
 	MRMediaRemoteGetNowPlayingInfo(dispatch_get_main_queue(), ^(CFDictionaryRef result)
 	{
 		NSLog(@"[Prism]Getting info dictionary");
@@ -508,6 +525,15 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 %end
 
+%hook MPUVibrantContentEffectView
+
+-(void)setBlurImageView:(UIImageView*)view{
+	NSLog(@"[Prism]Setting blur view.");
+	%orig;
+}
+
+%end
+
 %hook MusicArtworkView
 
 - (id)layoutSubviews
@@ -578,11 +604,17 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 	if(vc && [vc isKindOfClass:[%c(MusicNowPlayingItemViewController) class]])
 	{
+
 		[self generatePrismColors];
 	}
 }
 
 %new - (void)generatePrismColors {
+
+	[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
+	[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
+	[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
+
 	MRMediaRemoteGetNowPlayingInfo(dispatch_get_main_queue(), ^(CFDictionaryRef result)
 	{
 		NSLog(@"[Prism]Getting info dictionary");
