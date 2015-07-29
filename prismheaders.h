@@ -7,6 +7,9 @@
 -(AVPlayer*)_player;
 @end
 
+@interface MusicNowPlayingViewController
+-(void)generatePrismColors;
+@end
 
 @interface MusicAVPlayer : AVPlayer
 -(MPQueuePlayer*)avPlayer;

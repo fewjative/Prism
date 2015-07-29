@@ -80,6 +80,8 @@ static UIColor* colorWithString(NSString * stringToConvert)
     self.beatPrimaryColor = [UIColor blackColor];
     self.beatSecondaryColor = [UIColor redColor];
     self.spectrumPrimaryColor = [UIColor redColor];
+    self.randomColorPrimary = [UIColor cyanColor];
+    self.randomColorSecondary = [UIColor magentaColor];
 
     self.backgroundColor = [UIColor clearColor];
     self.overlayColor = [UIColor whiteColor];
@@ -93,14 +95,14 @@ static UIColor* colorWithString(NSString * stringToConvert)
     self.outData = nil;
     self.avg = 0.0;
     self.numBars = 30;
+    self.barHeight = 1.0;
     self.sum = 0.0;
     self.bar_width = 0.0;
     self.scaled_avg = 0.0;
     self.mag = 30;
     self.volume = 1;
     self.displayWave = 0;
-    self.useColorFlow = NO;
-    self.usePrismFlow = NO;
+    self.colorStyle = 0;
     self.frequency = 1.0f;
     self.amplitude = 1.0f;
     self.numberOfWaves = 5;
@@ -260,36 +262,45 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
             CGRect circlePoint = CGRectMake((rect.size.width/2.0)-(self.scaled_avg/2.0), rect.size.height/2.0-(self.scaled_avg/2.0), self.scaled_avg, self.scaled_avg);
             
-            if(self.useColorFlow)
+            if( self.colorStyle == 0)
+            {
+                [[self.secondaryColor colorWithAlphaComponent:.4f] setFill];
+            }
+            else if(self.colorStyle == 1)
             {
                 [[self.colorFlowSecondary colorWithAlphaComponent:.4f] setFill];
             }
-            else if(self.usePrismFlow)
+            else if(self.colorStyle == 2)
             {
                 [[self.prismFlowSecondary colorWithAlphaComponent:.4f] setFill];
             }
-            else
+            else if(self.colorStyle == 3)
             {
-                [[self.secondaryColor colorWithAlphaComponent:.4f] setFill];
+                [[self.randomColorSecondary colorWithAlphaComponent:.4f] setFill];
             }
 
             CGContextFillEllipseInRect(context, circlePoint);
         }
 
-        if(self.useColorFlow)
+        if(self.colorStyle == 0)
+        {
+            [self.primaryColor setFill];
+            [self.primaryColor setStroke];
+        }
+        else if(self.colorStyle == 1)
         {
             [self.colorFlowPrimary setFill];
             [self.colorFlowPrimary setStroke];
         }
-        else if(self.usePrismFlow)
+        else if(self.colorStyle == 2)
         {
             [self.prismFlowPrimary setFill];
             [self.prismFlowPrimary setStroke];
         }
-        else
+        else if(self.colorStyle == 3)
         {
-            [self.primaryColor setFill];
-            [self.primaryColor setStroke];
+            [self.randomColorPrimary setFill];
+            [self.randomColorPrimary setStroke];
         }
 
         CGContextSetLineWidth(context, 2.0);
@@ -334,21 +345,28 @@ static UIColor* colorWithString(NSString * stringToConvert)
         CGRect barRect;
         CGFloat centerX = (rect.size.width/2.0);
         CGFloat centerY = (rect.size.height/2.0);
+        CGFloat frameHeight = rect.size.height * self.barHeight;
+        NSLog(@"%f %f %f", rect.size.height, self.barHeight, frameHeight);
 
-        if(self.useColorFlow)
+        if(self.colorStyle == 0)
+        {
+            [self.secondaryColor setFill];
+            [self.secondaryColor setStroke];
+        }
+        else if(self.colorStyle == 1)
         {
             [self.colorFlowSecondary setFill];
             [self.colorFlowSecondary setStroke];
         }
-        else if(self.usePrismFlow)
+        else if(self.colorStyle == 2)
         {
             [self.prismFlowSecondary setFill];
             [self.prismFlowSecondary setStroke];
         }
-        else
+        else if(self.colorStyle == 3)
         {
-            [self.secondaryColor setFill];
-            [self.secondaryColor setStroke];
+            [self.randomColorSecondary setFill];
+            [self.randomColorSecondary setStroke];
         }
 
         if(self.spectrumStyle == 2 || self.spectrumStyle == 3)
@@ -372,35 +390,35 @@ static UIColor* colorWithString(NSString * stringToConvert)
             }
             self.avg = self.sum/bin_size;
             self.bar_width = (rect.size.width/(self.numBars*2))*2.0;
-            self.scaled_avg = (self.avg / self.mag ) * rect.size.height * self.volume;
+            self.scaled_avg = (self.avg / self.mag ) * frameHeight * self.volume;
 
             if(self.scaled_avg != self.scaled_avg)
             {
-                self.scaled_avg = rect.size.height;
+                self.scaled_avg = frameHeight;
             }
 
-            if(self.scaled_avg > rect.size.height)
-                self.scaled_avg = rect.size.height;
+            if(self.scaled_avg > frameHeight)
+                self.scaled_avg = frameHeight;
 
             UIBezierPath * barPath;
             if(self.spectrumStyle == 0)
             {
-                barRect = CGRectMake(i*self.bar_width,rect.size.height-self.scaled_avg,self.bar_width, self.scaled_avg);
+                barRect = CGRectMake(i*self.bar_width,(frameHeight-self.scaled_avg) + ((1.0-self.barHeight) * rect.size.height),self.bar_width, self.scaled_avg);
                 barPath = [UIBezierPath bezierPathWithRoundedRect:barRect cornerRadius:0];
             }
             else if(self.spectrumStyle == 1)
             {
-                barRect = CGRectMake(i*self.bar_width,rect.size.height/2.0-self.scaled_avg/2.0,self.bar_width, self.scaled_avg);
+                barRect = CGRectMake(i*self.bar_width,(frameHeight/2.0-self.scaled_avg/2.0) + ((1.0-self.barHeight) * (rect.size.height/2.0)),self.bar_width, self.scaled_avg);
                 barPath = [UIBezierPath bezierPathWithRoundedRect:barRect cornerRadius:0];
             }
             else if(self.spectrumStyle == 2 || self.spectrumStyle == 3)
             {
                 if(self.spectrumStyle == 2)
                 {
-                   barRect = CGRectMake((rect.size.height/2.0)-(self.bar_width),(rect.size.width/4.0) - (self.scaled_avg/4.0),self.bar_width, self.scaled_avg/4.0);
+                   barRect = CGRectMake((rect.size.height/2.0)-(self.bar_width),((rect.size.width/4.0) - (self.scaled_avg/4.0)),self.bar_width, self.scaled_avg/4.0);
                 }
                 else
-                    barRect = CGRectMake((rect.size.height/2.0)-(self.bar_width),(rect.size.width/4.0) - (self.scaled_avg/4.0),self.bar_width, self.scaled_avg/2.0);
+                    barRect = CGRectMake((rect.size.height/2.0)-(self.bar_width),((rect.size.width/4.0) - (self.scaled_avg/4.0)),self.bar_width, self.scaled_avg/2.0);
 
                 barPath = [UIBezierPath bezierPathWithRoundedRect:barRect cornerRadius:0];
                 CGFloat degrees = 1.0*i*(360.0/self.numBars);

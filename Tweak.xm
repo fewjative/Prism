@@ -39,9 +39,12 @@ typedef struct AVAudioTapProcessorContext {
 
 static BOOL tweakEnabled = NO;
 static CGFloat theme = 0.0;
-static BOOL useColorFlow = NO;
-static BOOL usePrismFlow = NO;
+static NSInteger colorStyle = 0;
 static BOOL overlayAlbumArt = NO;
+static BOOL lyricsVisible = NO;
+static BOOL wasVisible = NO;
+static BOOL isVisible = NO;
+static NSInteger position = 0;
 static UIColor * overlayColor;
 static UIColor * beatPrimaryColor;
 static UIColor * beatSecondaryColor;
@@ -50,6 +53,7 @@ static NSInteger spectrumBarCount = 30;
 static NSInteger spectrumStyle = 0;
 static float transparency = 100;
 static BOOL visualizerVisibile = NO;
+static float barHeight = 100;
 
 static UIColor * prismFlowPrimary;
 static UIColor * prismFlowSecondary;
@@ -353,10 +357,10 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 		if(appState!=2)//appState = 0 when we are in the app, thus update
 		{
 			[[BeatVisualizerView sharedInstance] setAlpha:(transparency/100.0)];
+			[[BeatVisualizerView sharedInstance] setBarHeight:(barHeight/100.0)];
 			[[BeatVisualizerView sharedInstance] setOverlayAlbumArt:overlayAlbumArt];
 			[[BeatVisualizerView sharedInstance] setOverlayColor:overlayColor];
-			[[BeatVisualizerView sharedInstance] setUseColorFlow:useColorFlow];
-			[[BeatVisualizerView sharedInstance] setUsePrismFlow:usePrismFlow];
+			[[BeatVisualizerView sharedInstance] setColorStyle:colorStyle];
 			[[BeatVisualizerView sharedInstance] setSpectrumStyle:spectrumStyle];
 			[[BeatVisualizerView sharedInstance] setNumBars:spectrumBarCount];
 			[[BeatVisualizerView sharedInstance] updateWithLevel:avgVol withData:fftData withMag:mag withVol:playerVolume withType:theme];
@@ -390,62 +394,88 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 %end
 
-%hook MPUSlantedTextPlaceholderArtworkView
+%hook MPULyricsView
 
--(void)setPlaceholderTitle:(NSString*)title{
+-(void)setHidden:(BOOL)hidden animated:(BOOL)animated {
+
+	NSLog(@"[Prism]setHidden");
+	/*f([[BeatVisualizerView sharedInstance] isVisible] && !hidden)
+	{
+		%orig(YES, NO);
+		wasVisible = NO;
+		isVisible = NO;
+	} else {
+		%orig;
+		wasVisible = isVisible;
+		isVisible = hidden;
+	}*/
+
+	%orig;
+	/*isVisible = !hidden;
+
+	if(hidden)
+		[[BeatVisualizerView sharedInstance] setIsVisible:YES];
+	else 
+		[[BeatVisualizerView sharedInstance] setIsVisible:NO];*/
+}
+
+%end
+
+%hook MusicNowPlayingViewController
+
+-(void)_updateTitles {
+	NSLog(@"[Prism]Updating titles.");
+	%orig;
+	//[self generatePrismColors];
+}
+
+//Give up and use long tap gesture?
+
+-(void)_tapAction:(id)arg {
+	NSLog(@"[Prism]TapAction: %@", arg);
+
+	//if(!isVisible)
+	//	[[BeatVisualizerView sharedInstance] toggleVisibility];
+
+	//if(![[BeatVisualizerView sharedInstance] isVisible])
+		%orig;
+	/*if(!wasVisible && !isVisible)
+		[[BeatVisualizerView sharedInstance] toggleVisibility];
+	else if(!wasVisible && isVisible)
+	{
+		%orig;
+		[[BeatVisualizerView sharedInstance] setIsVisible:NO];
+	}
+	else if(wasVisible && !isVisible)
+	{
+		%orig;
+		[[BeatVisualizerView sharedInstance] setIsVisible:YES];
+	}*/
+	/*if()
+
+	if([[BeatVisualizerView sharedInstance] isVisible])
+	{
+		[[BeatVisualizerView sharedInstance] setIsVisible:NO];
+		return;
+	}
 
 	%orig;
 
-	if(!tweakEnabled)
-	{
-		NSLog(@"[Prism]Tweak was not enabled, not adding Visualizer.");
-		return;
-	}
+	UIView * lyricView = MSHookIvar<UIView*>(self, "_lyricsView");
 
-	UIView * superview = [self superview];
+	if(!lyricView)
+		[[BeatVisualizerView sharedInstance] toggleVisibility];*/
 
-	if(!superview)
-		return;
-
-	UIViewController * vc = MSHookIvar<UIViewController*>(superview,"_viewDelegate");
-
-	if(vc && [vc isKindOfClass:[%c(MusicNowPlayingViewController) class]])
-	{
-		[self generatePrismColors];
-
-		NSLog(@"[Prism]setPlaceholderTitle");
-		for (UIView * view in self.subviews) {
-	    	if([view isKindOfClass:[%c(BeatVisualizerView) class]])
-	    		return;
-	    }
-
-		[[BeatVisualizerView sharedInstance] setFrame:self.bounds];
-		NSLog(@"[Prism]Added BeatVisualizerView to the Music App");
-	    [self addSubview:[BeatVisualizerView sharedInstance]];
-
-	    for (UIGestureRecognizer * recognizer in self.gestureRecognizers) {
-	    	[self removeGestureRecognizer:recognizer];
-	    }
-
-	    UIGestureRecognizer * tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toggleVisualizerVisibility:)];
-	    [self setUserInteractionEnabled:YES];
-	    [self addGestureRecognizer:tap];
-	}
 }
 
-%new - (void)toggleVisualizerVisibility:(UITapGestureRecognizer*)sender {
-	[[BeatVisualizerView sharedInstance] toggleVisibility];
-}
-
--(void)_setTouchHighlighted:(BOOL)b animated:(BOOL)b2 {
-	%orig(NO, NO);
-}
+/*-(void)_showLyrics {
+	NSLog(@"[Prism]_showLyrics");
+	%orig;
+	wasVisible = NO;
+	isVisible = YES;
+}*/
 
 %new - (void)generatePrismColors {
-
-	[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
-	[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
-	[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
 
 	MRMediaRemoteGetNowPlayingInfo(dispatch_get_main_queue(), ^(CFDictionaryRef result)
 	{
@@ -513,6 +543,25 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		[[BeatVisualizerView sharedInstance] setPrismFlowPrimary:prismFlowPrimary];
 		[[BeatVisualizerView sharedInstance] setPrismFlowSecondary:prismFlowSecondary];
+		[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
+		[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
+		[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
+
+		NSInteger ranRed = arc4random()%255;
+		NSInteger ranGreen = arc4random()%255;
+		NSInteger ranBlue = arc4random()%255;
+
+		UIColor * randColor = [UIColor colorWithRed:ranRed/255.0f green:ranGreen/255.0f blue:ranBlue/255.0f alpha:1.0f];
+
+		[[BeatVisualizerView sharedInstance] setRandomColorPrimary:randColor];
+
+		ranRed = arc4random()%255;
+		ranGreen = arc4random()%255;
+		ranBlue = arc4random()%255;
+
+		UIColor * randColor2 = [UIColor colorWithRed:ranRed/255.0f green:ranGreen/255.0f blue:ranBlue/255.0f alpha:1.0f];
+
+		[[BeatVisualizerView sharedInstance] setRandomColorPrimary:randColor2];
 
 		NSLog(@"[Prism]Colors have been generated, reassigning the cache and releasing.");
 		if(cachedTitle)cachedTitle = nil;
@@ -523,6 +572,35 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	});
 }
 
+-(void)_setLyricsVisible:(BOOL)b {
+
+	NSLog(@"[Prism]_setLyricsVisible: %ld", (long)b);
+
+	if([[BeatVisualizerView sharedInstance] isVisible] && b)
+	{
+		%orig(NO);
+		wasVisible = NO;
+		isVisible = NO;
+	}
+	else
+	{
+		%orig;
+		wasVisible = isVisible;
+		isVisible = b;
+	}
+}
+
+-(void)_handleTapGestureRecognizerAction:(id)arg {
+	%orig;
+	NSLog(@"[Prism]_handleTap: %@", arg);
+	if(!wasVisible && !isVisible)
+		[[BeatVisualizerView sharedInstance] toggleVisibility];
+	else if(!wasVisible && isVisible)
+		[[BeatVisualizerView sharedInstance] setIsVisible:NO];
+	else if(wasVisible && !isVisible)
+		[[BeatVisualizerView sharedInstance] setIsVisible:YES];
+}
+
 %end
 
 %hook MPUVibrantContentEffectView
@@ -530,6 +608,148 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 -(void)setBlurImageView:(UIImageView*)view{
 	NSLog(@"[Prism]Setting blur view.");
 	%orig;
+}
+
+%end
+
+%hook MPUSlantedTextPlaceholderArtworkView
+
+-(void)setPlaceholderTitle:(NSString*)title{
+
+	%orig;
+
+	if(!tweakEnabled)
+	{
+		NSLog(@"[Prism]Tweak was not enabled, not adding Visualizer.");
+		return;
+	}
+
+	UIView * superview = [self superview];
+
+	if(!superview)
+		return;
+
+	UIViewController * vc = MSHookIvar<UIViewController*>(superview,"_viewDelegate");
+
+	if(vc && [vc isKindOfClass:[%c(MusicNowPlayingViewController) class]])
+	{
+		[self generatePrismColors];
+
+		NSLog(@"[Prism]setPlaceholderTitle");
+		for (UIView * view in self.subviews) {
+	    	if([view isKindOfClass:[%c(BeatVisualizerView) class]])
+	    		return;
+	    }
+
+		[[BeatVisualizerView sharedInstance] setFrame:self.bounds];
+		NSLog(@"[Prism]Added BeatVisualizerView to the Music App");
+	    [self addSubview:[BeatVisualizerView sharedInstance]];
+	}
+}
+
+%new - (void)toggleVisualizerVisibility:(UITapGestureRecognizer*)sender {
+	[[BeatVisualizerView sharedInstance] toggleVisibility];
+}
+
+-(void)_setTouchHighlighted:(BOOL)b animated:(BOOL)b2 {
+	%orig(NO, NO);
+}
+
+%new - (void)generatePrismColors {
+
+	MRMediaRemoteGetNowPlayingInfo(dispatch_get_main_queue(), ^(CFDictionaryRef result)
+	{
+		NSLog(@"[Prism]Getting info dictionary");
+		NSDictionary * dict = (__bridge NSDictionary*)result;
+
+		if(!dict)
+		{
+			NSLog(@"[Prism]Dictionary is nil");
+			return;
+		}
+
+		NSString * trackTitle = [dict objectForKey:(__bridge NSString*)kMRMediaRemoteNowPlayingInfoTitle];
+
+		if(!trackTitle)
+		{
+			NSLog(@"[Prism]TrackTitle is nil");
+			return;
+		}
+		
+		if(!cachedTitle)
+		{
+			NSLog(@"[Prism]Cached is nil");
+			cachedTitle = [[NSString alloc] init];
+		}
+		else
+		{
+			if([trackTitle isEqualToString:cachedTitle])
+			{
+				NSLog(@"[Prism]The track colors have already been generated");
+				return;
+			}
+		}
+
+		UIImage * image = [UIImage imageWithData:[dict objectForKey:(__bridge NSData*)kMRMediaRemoteNowPlayingInfoArtworkData]];
+
+		if(!image)
+		{
+			NSLog(@"[Prism]Image is nil");
+			return;
+		}
+
+		LEColorPicker * colorPicker = [[LEColorPicker alloc] init];
+		LEColorScheme *colorScheme = [colorPicker colorSchemeFromImage:image];
+		NSLog(@"[Prism] Valid Image %@ and scheme: %@", image, colorScheme);
+
+		int numComponents = CGColorGetNumberOfComponents([[colorScheme backgroundColor] CGColor]);
+		if(numComponents==4)
+		{
+			const CGFloat * components = CGColorGetComponents([[colorScheme backgroundColor] CGColor]);
+			prismFlowPrimary = [UIColor colorWithRed:components[0] green:components[1] blue:components[2] alpha:components[3]];
+		}
+		numComponents = CGColorGetNumberOfComponents([[colorScheme primaryTextColor] CGColor]);
+		if(numComponents==4)
+		{
+			const CGFloat * components = CGColorGetComponents([[colorScheme primaryTextColor] CGColor]);
+			prismFlowSecondary = [UIColor colorWithRed:components[0] green:components[1] blue:components[2] alpha:components[3]];
+		}
+
+		if(!prismFlowPrimary || !prismFlowSecondary)
+		{
+			NSLog(@"[Prism]One of the colors is nil");
+			return;
+		}
+
+		[[BeatVisualizerView sharedInstance] setPrismFlowPrimary:prismFlowPrimary];
+		[[BeatVisualizerView sharedInstance] setPrismFlowSecondary:prismFlowSecondary];
+		[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
+		[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
+		[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
+
+		NSInteger ranRed = arc4random()%255;
+		NSInteger ranGreen = arc4random()%255;
+		NSInteger ranBlue = arc4random()%255;
+
+		UIColor * randColor = [UIColor colorWithRed:ranRed/255.0f green:ranGreen/255.0f blue:ranBlue/255.0f alpha:1.0f];
+
+		[[BeatVisualizerView sharedInstance] setRandomColorPrimary:randColor];
+
+		ranRed = arc4random()%255;
+		ranGreen = arc4random()%255;
+		ranBlue = arc4random()%255;
+
+		UIColor * randColor2 = [UIColor colorWithRed:ranRed/255.0f green:ranGreen/255.0f blue:ranBlue/255.0f alpha:1.0f];
+
+		[[BeatVisualizerView sharedInstance] setRandomColorPrimary:randColor2];
+
+		NSLog(@"[Prism]Colors have been generated, reassigning the cache and releasing.");
+		if(cachedTitle)cachedTitle = nil;
+		cachedTitle = [NSString stringWithFormat:@"%@", trackTitle];
+		NSLog(@"[Prism]cachedTitle is %@ and trackTitle is %@ (should be same)", cachedTitle, trackTitle);
+		colorScheme = nil;
+		colorPicker = nil;
+	});
 }
 
 %end
@@ -562,14 +782,6 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 		[[BeatVisualizerView sharedInstance] setFrame:self.bounds];
 		NSLog(@"[Prism]Added BeatVisualizerView to the Music App");
 	    [self addSubview:[BeatVisualizerView sharedInstance]];
-
-	    for (UIGestureRecognizer * recognizer in self.gestureRecognizers) {
-	    	[self removeGestureRecognizer:recognizer];
-	    }
-
-	    UIGestureRecognizer * tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toggleVisualizerVisibility:)];
-	    [self setUserInteractionEnabled:YES];
-	    [self addGestureRecognizer:tap];
 	}
 
 	return orig;
@@ -611,10 +823,6 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 %new - (void)generatePrismColors {
 
-	[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
-	[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
-	[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
-
 	MRMediaRemoteGetNowPlayingInfo(dispatch_get_main_queue(), ^(CFDictionaryRef result)
 	{
 		NSLog(@"[Prism]Getting info dictionary");
@@ -681,6 +889,25 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		[[BeatVisualizerView sharedInstance] setPrismFlowPrimary:prismFlowPrimary];
 		[[BeatVisualizerView sharedInstance] setPrismFlowSecondary:prismFlowSecondary];
+		[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
+		[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
+		[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
+
+		NSInteger ranRed = arc4random()%255;
+		NSInteger ranGreen = arc4random()%255;
+		NSInteger ranBlue = arc4random()%255;
+
+		UIColor * randColor = [UIColor colorWithRed:ranRed/255.0f green:ranGreen/255.0f blue:ranBlue/255.0f alpha:1.0f];
+
+		[[BeatVisualizerView sharedInstance] setRandomColorPrimary:randColor];
+
+		ranRed = arc4random()%255;
+		ranGreen = arc4random()%255;
+		ranBlue = arc4random()%255;
+
+		UIColor * randColor2 = [UIColor colorWithRed:ranRed/255.0f green:ranGreen/255.0f blue:ranBlue/255.0f alpha:1.0f];
+
+		[[BeatVisualizerView sharedInstance] setRandomColorPrimary:randColor2];
 
 		NSLog(@"[Prism]Colors have been generated, reassigning the cache and releasing.");
 		if(cachedTitle)cachedTitle = nil;
@@ -712,16 +939,10 @@ static void loadPrefs()
         NSLog(@"[Prism]is NOT enabled");
     }
 
-	if([settings objectForKey:@"useColorFlow"]) {
-		useColorFlow = [settings[@"useColorFlow"] boolValue];
+    if([settings objectForKey:@"colorStyle"]) {
+		colorStyle = [settings[@"colorStyle"] intValue];
 	} else {
-		useColorFlow = NO;
-	}
-
-	if([settings objectForKey:@"usePrismFlow"]) {
-		usePrismFlow = [settings[@"usePrismFlow"] boolValue];
-	} else {
-		usePrismFlow = NO;
+		colorStyle = 0;
 	}
 
 	if([settings objectForKey:@"overlayAlbumArt"]) {
@@ -778,6 +999,12 @@ static void loadPrefs()
 		transparency = [settings[@"transparency"] floatValue];
 	} else {
 		transparency = 100;
+	}
+
+	if([settings objectForKey:@"barHeight"]) {
+		barHeight = [settings[@"barHeight"] floatValue];
+	} else {
+		barHeight = 100;
 	}
 }
 
