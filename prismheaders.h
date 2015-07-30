@@ -9,6 +9,7 @@
 
 @interface MusicNowPlayingViewController
 -(void)generatePrismColors;
+-(UIView*)view;
 @end
 
 @interface MusicAVPlayer : AVPlayer

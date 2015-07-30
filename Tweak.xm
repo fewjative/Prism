@@ -374,7 +374,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 	if(!tweakEnabled)
 	{
-		NSLog(@"[Prism]Tweak was not enabled, not tapping into the audio stream.");
+		NSLog(@"[Prism]Tweak was not enabled, not attempting to tap into the audio stream.");
 		return;
 	}
 
@@ -388,35 +388,13 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 -(id)currentItem
 {
-	item = %orig;
-	return item;
-}
-
-%end
-
-%hook MPULyricsView
-
--(void)setHidden:(BOOL)hidden animated:(BOOL)animated {
-
-	NSLog(@"[Prism]setHidden");
-	/*f([[BeatVisualizerView sharedInstance] isVisible] && !hidden)
+	if(!tweakEnabled)
+		return %orig;
+	else
 	{
-		%orig(YES, NO);
-		wasVisible = NO;
-		isVisible = NO;
-	} else {
-		%orig;
-		wasVisible = isVisible;
-		isVisible = hidden;
-	}*/
-
-	%orig;
-	/*isVisible = !hidden;
-
-	if(hidden)
-		[[BeatVisualizerView sharedInstance] setIsVisible:YES];
-	else 
-		[[BeatVisualizerView sharedInstance] setIsVisible:NO];*/
+		item = %orig;
+		return item;
+	}
 }
 
 %end
@@ -427,53 +405,45 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	NSLog(@"[Prism]Updating titles.");
 	%orig;
 	//[self generatePrismColors];
-}
 
-//Give up and use long tap gesture?
-
--(void)_tapAction:(id)arg {
-	NSLog(@"[Prism]TapAction: %@", arg);
-
-	//if(!isVisible)
-	//	[[BeatVisualizerView sharedInstance] toggleVisibility];
-
-	//if(![[BeatVisualizerView sharedInstance] isVisible])
-		%orig;
-	/*if(!wasVisible && !isVisible)
-		[[BeatVisualizerView sharedInstance] toggleVisibility];
-	else if(!wasVisible && isVisible)
-	{
-		%orig;
-		[[BeatVisualizerView sharedInstance] setIsVisible:NO];
-	}
-	else if(wasVisible && !isVisible)
-	{
-		%orig;
-		[[BeatVisualizerView sharedInstance] setIsVisible:YES];
-	}*/
-	/*if()
-
-	if([[BeatVisualizerView sharedInstance] isVisible])
-	{
-		[[BeatVisualizerView sharedInstance] setIsVisible:NO];
+	//this utility will only be used for iOS devices on 8.4+
+	if(![[[UIDevice currentDevice] systemVersion] isEqualToString:@"8.4"] || !tweakEnabled)
 		return;
-	}
 
-	%orig;
+	UIView *view = [self view];
 
-	UIView * lyricView = MSHookIvar<UIView*>(self, "_lyricsView");
+	if(!view)
+		return;
 
-	if(!lyricView)
-		[[BeatVisualizerView sharedInstance] toggleVisibility];*/
+	BOOL added = NO;
+	for (UIGestureRecognizer * recognizer in view.gestureRecognizers) {
+    	if([recognizer isKindOfClass:[%c(UILongPressGestureRecognizer) class]])
+    		added = YES;
+    }
 
+    if(!added)
+    {
+    	UIGestureRecognizer * longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
+    	[view addGestureRecognizer:longPress];
+    }
 }
 
-/*-(void)_showLyrics {
-	NSLog(@"[Prism]_showLyrics");
+%new -(void)longPress:(UILongPressGestureRecognizer*)gesture {
+	if(gesture.state == UIGestureRecognizerStateEnded)
+	{
+		[[BeatVisualizerView sharedInstance] toggleVisibility];
+	}
+}
+
+-(void)vibrantEffectView {
+	NSLog(@"[Prism]vibrantEffectView");
 	%orig;
-	wasVisible = NO;
-	isVisible = YES;
-}*/
+}
+
+-(void)setVibrantEffectView:(UIView*)view {
+	NSLog(@"[Prism]setVibrantEffectView: %@", view);
+	%orig;
+}
 
 %new - (void)generatePrismColors {
 
@@ -572,44 +542,6 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	});
 }
 
--(void)_setLyricsVisible:(BOOL)b {
-
-	NSLog(@"[Prism]_setLyricsVisible: %ld", (long)b);
-
-	if([[BeatVisualizerView sharedInstance] isVisible] && b)
-	{
-		%orig(NO);
-		wasVisible = NO;
-		isVisible = NO;
-	}
-	else
-	{
-		%orig;
-		wasVisible = isVisible;
-		isVisible = b;
-	}
-}
-
--(void)_handleTapGestureRecognizerAction:(id)arg {
-	%orig;
-	NSLog(@"[Prism]_handleTap: %@", arg);
-	if(!wasVisible && !isVisible)
-		[[BeatVisualizerView sharedInstance] toggleVisibility];
-	else if(!wasVisible && isVisible)
-		[[BeatVisualizerView sharedInstance] setIsVisible:NO];
-	else if(wasVisible && !isVisible)
-		[[BeatVisualizerView sharedInstance] setIsVisible:YES];
-}
-
-%end
-
-%hook MPUVibrantContentEffectView
-
--(void)setBlurImageView:(UIImageView*)view{
-	NSLog(@"[Prism]Setting blur view.");
-	%orig;
-}
-
 %end
 
 %hook MPUSlantedTextPlaceholderArtworkView
@@ -620,7 +552,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 	if(!tweakEnabled)
 	{
-		NSLog(@"[Prism]Tweak was not enabled, not adding Visualizer.");
+		NSLog(@"[Prism]Tweak was not enabled, not adding visualizer or gesture recognizers to < 8.4.");
 		return;
 	}
 
@@ -635,24 +567,41 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	{
 		[self generatePrismColors];
 
-		NSLog(@"[Prism]setPlaceholderTitle");
 		for (UIView * view in self.subviews) {
 	    	if([view isKindOfClass:[%c(BeatVisualizerView) class]])
 	    		return;
 	    }
 
 		[[BeatVisualizerView sharedInstance] setFrame:self.bounds];
-		NSLog(@"[Prism]Added BeatVisualizerView to the Music App");
+		NSLog(@"[Prism]Added visualizer to the Music App.");
 	    [self addSubview:[BeatVisualizerView sharedInstance]];
+
+		BOOL added = NO;
+		for (UIGestureRecognizer * recognizer in self.gestureRecognizers) {
+			if([recognizer isKindOfClass:[%c(UILongPressGestureRecognizer) class]])
+				added = YES;
+		}
+
+	    if(!added)
+	    {
+	    	UIGestureRecognizer * longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
+	    	[self addGestureRecognizer:longPress];
+	    }
 	}
 }
 
-%new - (void)toggleVisualizerVisibility:(UITapGestureRecognizer*)sender {
-	[[BeatVisualizerView sharedInstance] toggleVisibility];
+%new -(void)longPress:(UILongPressGestureRecognizer*)gesture {
+	if(gesture.state == UIGestureRecognizerStateEnded)
+	{
+		[[BeatVisualizerView sharedInstance] toggleVisibility];
+	}
 }
 
 -(void)_setTouchHighlighted:(BOOL)b animated:(BOOL)b2 {
-	%orig(NO, NO);
+	if(!tweakEnabled)
+		%orig;
+	else
+		%orig(NO, NO);
 }
 
 %new - (void)generatePrismColors {
@@ -762,7 +711,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 	if(!tweakEnabled)
 	{
-		NSLog(@"[Prism]Tweak was not enabled, not adding Visualizer.");
+		NSLog(@"[Prism]Tweak was not enabled, not adding visualizer from layoutSubviews.");
 		return orig;
 	}
 
@@ -770,7 +719,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 	if(!superview)
 	{
-		NSLog(@"[Prism]Superview was null.");
+		NSLog(@"[Prism]Superview(layoutSubviews) was null.");
 		return orig;
 	}
 
@@ -780,7 +729,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	{
 		[[BeatVisualizerView sharedInstance] removeFromSuperview];
 		[[BeatVisualizerView sharedInstance] setFrame:self.bounds];
-		NSLog(@"[Prism]Added BeatVisualizerView to the Music App");
+		NSLog(@"[Prism]Added visualizer to the Music App.");
 	    [self addSubview:[BeatVisualizerView sharedInstance]];
 	}
 
@@ -792,7 +741,11 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 }
 
 -(void)_setTouchHighlighted:(BOOL)b animated:(BOOL)b2 {
-	%orig(NO, NO);
+
+	if(!tweakEnabled)
+		%orig;
+	else
+		%orig(NO, NO);
 }
 
 -(void)setImage:(UIImage*)img {
@@ -800,7 +753,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 	if(!tweakEnabled)
 	{
-		NSLog(@"[Prism]Tweak was not enabled, not generating colors from image.");
+		NSLog(@"[Prism]Tweak was not enabled, will not attempt to generate colors from setImage.");
 		return;
 	}
 
@@ -808,7 +761,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 	if(!superview)
 	{
-		NSLog(@"[Prism]Superview is null");
+		NSLog(@"[Prism]Superview(setImage) is null");
 		return;
 	}
 	
