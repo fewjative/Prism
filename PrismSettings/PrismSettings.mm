@@ -45,8 +45,8 @@ static PrismSettingsListController * pslc = nil;
 
 -(void)respring
 {
-	UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Respring"
-		message:@"Are you sure you want to respring?"
+	UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Restart Music App"
+		message:@"Are you sure you want to restart the Music app? This only needs to be done after you have enabled or disabled the tweak."
 		delegate:self     
 		cancelButtonTitle:@"No" 
 		otherButtonTitles:@"Yes", nil];
@@ -58,7 +58,7 @@ static PrismSettingsListController * pslc = nil;
 - (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex {
     if (buttonIndex == 1) {
     	if (alertView.tag == kRespringAlertTag) {
-    		system("killall backboardd");
+    		system("killall Music");
     	}
     }
 }

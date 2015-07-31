@@ -7,6 +7,11 @@
 -(AVPlayer*)_player;
 @end
 
+@interface MusicNowPlayingItemViewController
+-(void)generatePrismColors;
+-(void)generatePrismColors:(UIImage*)img;
+@end
+
 @interface MusicNowPlayingViewController
 -(void)generatePrismColors;
 -(UIView*)view;
