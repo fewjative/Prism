@@ -71,15 +71,15 @@ static UIColor* colorWithString(NSString * stringToConvert)
 - (void)setup
 {
     NSLog(@"[Prism]Setup started");
-    self.primaryColor = [UIColor blackColor];
-    self.secondaryColor = [UIColor redColor];
+    self.primaryColor = [UIColor cyanColor];
+    self.secondaryColor = [UIColor magentaColor];
     self.colorFlowPrimary = [UIColor blackColor];
     self.colorFlowSecondary = [UIColor redColor];
     self.prismFlowPrimary = [UIColor blackColor];
     self.prismFlowSecondary = [UIColor redColor];
-    self.beatPrimaryColor = [UIColor blackColor];
-    self.beatSecondaryColor = [UIColor redColor];
-    self.spectrumPrimaryColor = [UIColor redColor];
+    self.beatPrimaryColor = [UIColor cyanColor];
+    self.beatSecondaryColor = [UIColor magentaColor];
+    self.spectrumPrimaryColor = [UIColor cyanColor];
     self.randomColorPrimary = [UIColor cyanColor];
     self.randomColorSecondary = [UIColor magentaColor];
 
@@ -215,7 +215,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
     }
     else if(self.type == 1.0)
     {
-        self.primaryColor = self.spectrumPrimaryColor;
+        self.secondaryColor = self.spectrumPrimaryColor;
     }
 }
 

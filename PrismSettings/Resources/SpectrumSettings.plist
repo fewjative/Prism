@@ -41,26 +41,9 @@
             <key>action</key>           <string>save</string>
       </dict>
 	<dict>
-            <key>cell</key>
-            <string>PSLinkCell</string>
-            <key>cellClass</key>
-            <string>PFColorCell</string>
-            <key>label</key>
-            <string>Primary Color</string>
-            <key>color_defaults</key>
-            <string>com.joshdoctors.prism</string>
-            <key>color_key</key>
-            <string>spectrumPrimaryColor</string>
-            <key>title</key>
-            <string>Primary Color</string>
-            <key>color_fallback</key>
-            <string>#FF0000</string>
-            <key>usesRGB</key>
-            <true/>
-            <key>usesAlpha</key>
-            <true/>
-            <key>color_postNotification</key>
-            <string>com.joshdoctors.prism/settingschanged</string>
+            <key>cell</key>             <string>PSButtonCell</string>
+            <key>label</key>            <string>Primary Color</string>
+            <key>action</key>           <string>selectPrimaryColor</string>
       </dict>
       <dict>
             <key>cell</key>

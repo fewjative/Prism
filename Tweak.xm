@@ -19,6 +19,8 @@
 #define kDefaultMusicColor [[UIColor alloc] initWithRed:1.0f green:1.0f blue:1.0f alpha:1.0f]
 #define kDefaultBlackColor [[UIColor alloc] initWithRed:0.0f green:0.0f blue:0.0f alpha:1.0f]
 #define kDefaultRedColor [[UIColor alloc] initWithRed:1.0f green:0.0f blue:0.0f alpha:1.0f]
+#define kDefaultCyanColor [[UIColor alloc] initWithRed:0.0f green:1.0f blue:1.0f alpha:1.0f]
+#define kDefaultMagenta [[UIColor alloc] initWithRed:1.0f green:0.0f blue:1.0f alpha:1.0f]
 #define prefPath @"/User/Library/Preferences/com.joshdoctors.prism.plist"
 
 typedef struct AVAudioTapProcessorContext {
@@ -356,6 +358,9 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 		//state = 2 -> on the lockscreen
 		if(appState!=2)//appState = 0 when we are in the app, thus update
 		{
+			[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
+			[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
+			[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
 			[[BeatVisualizerView sharedInstance] setAlpha:(transparency/100.0)];
 			[[BeatVisualizerView sharedInstance] setBarHeight:(barHeight/100.0)];
 			[[BeatVisualizerView sharedInstance] setOverlayAlbumArt:overlayAlbumArt];
@@ -568,9 +573,6 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		[[BeatVisualizerView sharedInstance] setPrismFlowPrimary:prismFlowPrimary];
 		[[BeatVisualizerView sharedInstance] setPrismFlowSecondary:prismFlowSecondary];
-		[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
-		[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
-		[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
 
 		NSInteger ranRed = arc4random()%255;
 		NSInteger ranGreen = arc4random()%255;
@@ -664,9 +666,6 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		[[BeatVisualizerView sharedInstance] setPrismFlowPrimary:prismFlowPrimary];
 		[[BeatVisualizerView sharedInstance] setPrismFlowSecondary:prismFlowSecondary];
-		[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
-		[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
-		[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
 
 		NSInteger ranRed = arc4random()%255;
 		NSInteger ranGreen = arc4random()%255;
@@ -785,21 +784,21 @@ static void loadPrefs()
 	if([settings objectForKey:@"beatPrimaryColor"]) {
 		beatPrimaryColor = parseColorFromPreferences(settings[@"beatPrimaryColor"]);
 	} else {
-		beatPrimaryColor = kDefaultRedColor;
+		beatPrimaryColor = kDefaultCyanColor;
 	}
 
 	if([settings objectForKey:@"beatSecondaryColor"]) {
 		beatSecondaryColor = parseColorFromPreferences(settings[@"beatSecondaryColor"]);
 	} else {
-		beatSecondaryColor = kDefaultBlackColor;
+		beatSecondaryColor = kDefaultMagenta;
 	}
 
 	if([settings objectForKey:@"spectrumPrimaryColor"]) {
 		spectrumPrimaryColor = parseColorFromPreferences(settings[@"spectrumPrimaryColor"]);
 	} else {
-		spectrumPrimaryColor = kDefaultRedColor;
+		spectrumPrimaryColor = kDefaultCyanColor;
 	}
-
+	
 	if([settings objectForKey:@"spectrumStyle"]) {
 		spectrumStyle = [settings[@"spectrumStyle"] intValue];
 	} else {

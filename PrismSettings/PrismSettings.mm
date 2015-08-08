@@ -2,8 +2,31 @@
 #import <Social/SLComposeViewController.h>
 #import <Social/SLServiceTypes.h>
 #import <UIKit/UIKit.h>
+#import "libcolorpicker.h"
 #define prefPath @"/User/Library/Preferences/com.joshdoctors.prism.plist"
 #define kRespringAlertTag 854
+
+static UIColor* parseColorFromPreferences(NSString* string) {
+	NSArray *prefsarray = [string componentsSeparatedByString: @":"];
+	NSString *hexString = [prefsarray objectAtIndex:0];
+	double alpha = [[prefsarray objectAtIndex:1] doubleValue];
+
+	unsigned rgbValue = 0;
+    NSScanner *scanner = [NSScanner scannerWithString:hexString];
+    [scanner setScanLocation:1]; // bypass '#' character
+    [scanner scanHexInt:&rgbValue];
+    return [[UIColor alloc] initWithRed:((rgbValue & 0xFF0000) >> 16)/255.0 green:((rgbValue & 0xFF00) >> 8)/255.0 blue:(rgbValue & 0xFF)/255.0 alpha:alpha];
+}
+
+static void writeAndPost(NSString* key, NSString * value) {
+	NSMutableDictionary *defaults = [NSMutableDictionary dictionary];
+	[defaults addEntriesFromDictionary:[NSDictionary dictionaryWithContentsOfFile:prefPath]];
+	[defaults setObject:value forKey:key];
+	[defaults writeToFile:prefPath atomically:YES];
+
+	CFStringRef toPost = (CFStringRef)@"com.joshdoctors.prism/settingschanged";
+	if(toPost) CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), toPost, NULL, NULL, YES);
+}
 
 @interface PrismSettingsListController: PSEditableListController {
 }
@@ -63,6 +86,27 @@ static PrismSettingsListController * pslc = nil;
     }
 }
 
+-(void)selectOverlayColor {
+
+	PFColorAlert * alert = [PFColorAlert new];
+
+	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
+	UIColor * startColor = nil;
+
+	if([settings objectForKey:@"overlayColor"]) {
+		startColor = parseColorFromPreferences(settings[@"overlayColor"]);
+	} else {
+		startColor = [UIColor colorWithRed:0.769 green:0.286 blue:0.008 alpha:0.75];;
+	}
+
+	[alert showWithStartColor:startColor showAlpha:YES completion:^void(UIColor *pickedColor) {
+		NSString * hexString = [UIColor hexFromColor:pickedColor];
+		hexString = [NSString stringWithFormat:@"%@:%g", hexString, pickedColor.alpha];
+
+		writeAndPost(@"overlayColor", hexString);
+	}];
+}
+
 -(id) readPreferenceValue:(PSSpecifier*)specifier {
 	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
 	if (!settings[specifier.properties[@"key"]]) {
@@ -76,7 +120,6 @@ static PrismSettingsListController * pslc = nil;
 	[defaults addEntriesFromDictionary:[NSDictionary dictionaryWithContentsOfFile:prefPath]];
 	[defaults setObject:value forKey:specifier.properties[@"key"]];
 	[defaults writeToFile:prefPath atomically:YES];
-	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
 	CFStringRef toPost = (CFStringRef)specifier.properties[@"PostNotification"];
 	if(toPost) CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), toPost, NULL, NULL, YES);
 }
@@ -101,6 +144,48 @@ static PrismSettingsListController * pslc = nil;
     [self.view endEditing:YES];
 }
 
+-(void)selectPrimaryColor {
+
+	PFColorAlert * alert = [PFColorAlert new];
+
+	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
+	UIColor * startColor = nil;
+
+	if([settings objectForKey:@"beatPrimaryColor"]) {
+		startColor = parseColorFromPreferences(settings[@"beatPrimaryColor"]);
+	} else {
+		startColor = [UIColor colorWithRed:0.769 green:0.286 blue:0.008 alpha:0.75];;
+	}
+
+	[alert showWithStartColor:startColor showAlpha:YES completion:^void(UIColor *pickedColor) {
+		NSString * hexString = [UIColor hexFromColor:pickedColor];
+		hexString = [NSString stringWithFormat:@"%@:%g", hexString, pickedColor.alpha];
+
+		writeAndPost(@"beatPrimaryColor", hexString);
+	}];
+}
+
+-(void)selectSecondaryColor {
+
+	PFColorAlert * alert = [PFColorAlert new];
+
+	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
+	UIColor * startColor = nil;
+
+	if([settings objectForKey:@"beatSecondaryColor"]) {
+		startColor = parseColorFromPreferences(settings[@"beatSecondaryColor"]);
+	} else {
+		startColor = [UIColor colorWithRed:0.769 green:0.286 blue:0.008 alpha:0.75];;
+	}
+
+	[alert showWithStartColor:startColor showAlpha:YES completion:^void(UIColor *pickedColor) {
+		NSString * hexString = [UIColor hexFromColor:pickedColor];
+		hexString = [NSString stringWithFormat:@"%@:%g", hexString, pickedColor.alpha];
+
+		writeAndPost(@"beatSecondaryColor", hexString);
+	}];
+}
+
 -(id) readPreferenceValue:(PSSpecifier*)specifier {
 	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
 	if (!settings[specifier.properties[@"key"]]) {
@@ -114,7 +199,6 @@ static PrismSettingsListController * pslc = nil;
 	[defaults addEntriesFromDictionary:[NSDictionary dictionaryWithContentsOfFile:prefPath]];
 	[defaults setObject:value forKey:specifier.properties[@"key"]];
 	[defaults writeToFile:prefPath atomically:YES];
-	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
 	CFStringRef toPost = (CFStringRef)specifier.properties[@"PostNotification"];
 	if(toPost) CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), toPost, NULL, NULL, YES);
 }
@@ -140,6 +224,27 @@ static PrismSettingsListController * pslc = nil;
     [self.view endEditing:YES];
 }
 
+-(void)selectPrimaryColor {
+
+	PFColorAlert * alert = [PFColorAlert new];
+
+	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
+	UIColor * startColor = nil;
+
+	if([settings objectForKey:@"spectrumPrimaryColor"]) {
+		startColor = parseColorFromPreferences(settings[@"spectrumPrimaryColor"]);
+	} else {
+		startColor = [UIColor colorWithRed:0.769 green:0.286 blue:0.008 alpha:0.75];;
+	}
+
+	[alert showWithStartColor:startColor showAlpha:YES completion:^void(UIColor *pickedColor) {
+		NSString * hexString = [UIColor hexFromColor:pickedColor];
+		hexString = [NSString stringWithFormat:@"%@:%g", hexString, pickedColor.alpha];
+
+		writeAndPost(@"spectrumPrimaryColor", hexString);
+	}];
+}
+
 -(id) readPreferenceValue:(PSSpecifier*)specifier {
 	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
 	if (!settings[specifier.properties[@"key"]]) {
@@ -153,7 +258,6 @@ static PrismSettingsListController * pslc = nil;
 	[defaults addEntriesFromDictionary:[NSDictionary dictionaryWithContentsOfFile:prefPath]];
 	[defaults setObject:value forKey:specifier.properties[@"key"]];
 	[defaults writeToFile:prefPath atomically:YES];
-	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
 	CFStringRef toPost = (CFStringRef)specifier.properties[@"PostNotification"];
 	if(toPost) CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), toPost, NULL, NULL, YES);
 }

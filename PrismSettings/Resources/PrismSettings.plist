@@ -63,26 +63,9 @@
 			<string>Overlay Album Art</string>
 		</dict>
 		<dict>
-            <key>cell</key>
-            <string>PSLinkCell</string>
-            <key>cellClass</key>
-            <string>PFColorCell</string>
-            <key>label</key>
-            <string>Overlay Color</string>
-            <key>color_defaults</key>
-            <string>com.joshdoctors.prism</string>
-            <key>color_key</key>
-            <string>overlayColor</string>
-            <key>title</key>
-            <string>Overlay Color</string>
-            <key>color_fallback</key>
-            <string>#FFFFFF</string>
-            <key>usesRGB</key>
-            <true/>
-            <key>usesAlpha</key>
-            <true/>
-            <key>color_postNotification</key>
-            <string>com.joshdoctors.prism/settingschanged</string>
+            <key>cell</key>             <string>PSButtonCell</string>
+            <key>label</key>            <string>Overlay Color</string>
+            <key>action</key>           <string>selectOverlayColor</string>
         </dict>
         <dict>
         	<key>cell</key>
