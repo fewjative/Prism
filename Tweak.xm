@@ -238,6 +238,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 %group NowPlayingArtView
 
+
 %hook MPAVController
 
 %new -(void)addAudioTap:(MPAVItem*)item
@@ -297,6 +298,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 		[displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
 	}
 }
+
 
 %new - (void)updateMusicMeters
 {
@@ -405,6 +407,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 %end
 
 //MusicNowPlayingViewController < 8.4 has artworknotification, didUpdateArtworkImage, etc
+
 %hook MusicNowPlayingViewController
 
 -(void)_updateTitles {
@@ -601,28 +604,8 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 %end
 
+
 %hook MusicNowPlayingItemViewController
-
-/*-(void)_setArtworkImage:(id)img {
-	NSLog(@"[Prism]SetArtwork: %@", img);
-	%orig;
-}
-
--(id)_placeholderArtwork {
-	id orig = %orig;
-	NSLog(@"[Prism]_placeholderArtwork: %@", orig);
-	return orig;
-}
-
--(void)_itemTypeAvailableNotification:(id)arg {
-	NSLog(@"_itemTypeAvailableNotification: %@", arg);
-	%orig;
-}
-
--(void)_itemArtworkDidChangeNotification:(id)arg {
-	NSLog(@"_itemArtworkDidChangeNotification: %@", arg);
-	%orig;
-}*/
 
 -(id)artworkImage {
 	id orig = %orig;
@@ -693,23 +676,29 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 %hook MusicArtworkView
 
-- (id)layoutSubviews
+- (void)layoutSubviews
 {
-	id orig = %orig;
+	NSLog(@"[Prism]layoutSubviews");
+
+	%orig;
 
 	if(!tweakEnabled)
 	{
 		NSLog(@"[Prism]Tweak was not enabled, not adding visualizer from layoutSubviews.");
-		return orig;
+		return;
 	}
+
+	NSLog(@"Tweak is enabled");
 
 	UIView * superview = [self superview];
 
 	if(!superview)
 	{
 		NSLog(@"[Prism]Superview(layoutSubviews) was null.");
-		return orig;
+		return;
 	}
+
+	NSLog(@"superview: %@", superview);
 
 	UIViewController * vc = MSHookIvar<UIViewController*>(superview,"_viewDelegate");
 
@@ -720,8 +709,6 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 		NSLog(@"[Prism]Added visualizer to the Music App.");
 	    [self addSubview:[BeatVisualizerView sharedInstance]];
 	}
-
-	return orig;
 }
 
 %new - (void)toggleVisualizerVisibility:(UITapGestureRecognizer*)sender {
@@ -737,6 +724,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 }
 
 %end
+
 
 %end
 

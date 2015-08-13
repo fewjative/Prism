@@ -4,16 +4,16 @@
 <dict>
 	<key>items</key>
       <array>
-       <dict>
-            <key>cell</key>             <string>PSButtonCell</string>
-            <key>label</key>            <string>Primary Color</string>
-            <key>action</key>           <string>selectPrimaryColor</string>
-      </dict>
-      <dict>
-            <key>cell</key>             <string>PSButtonCell</string>
-            <key>label</key>            <string>Secondary Color</string>
-            <key>action</key>           <string>selectSecondaryColor</string>
-      </dict>
+             <dict>
+                  <key>cell</key>             <string>PSButtonCell</string>
+                  <key>label</key>            <string>Primary Color</string>
+                  <key>action</key>           <string>selectPrimaryColor</string>
+            </dict>
+            <dict>
+                  <key>cell</key>             <string>PSButtonCell</string>
+                  <key>label</key>            <string>Secondary Color</string>
+                  <key>action</key>           <string>selectSecondaryColor</string>
+            </dict>
 	</array>
 	<key>title</key>
 	<string>Beat Visualizer Settings</string>
