@@ -124,7 +124,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
 void init(MTAudioProcessingTapRef tap, void *clientInfo, void **tapStorageOut)
 {
-   NSLog(@"[Prism]Initialising the Audio Tap Processor");
+   //NSLog(@"[Prism]Initialising the Audio Tap Processor");
    AVAudioTapProcessorContext * context = (AVAudioTapProcessorContext*)calloc(1, sizeof(AVAudioTapProcessorContext));
    context->self = clientInfo;
    context->sampleRate = NAN;
@@ -146,7 +146,7 @@ void init(MTAudioProcessingTapRef tap, void *clientInfo, void **tapStorageOut)
  
 void finalize(MTAudioProcessingTapRef tap)
 {
-    NSLog(@"[Prism]Finalizing the Audio Tap Processor, %@", tap);
+    //NSLog(@"[Prism]Finalizing the Audio Tap Processor, %@", tap);
     AVAudioTapProcessorContext * context = (AVAudioTapProcessorContext*)MTAudioProcessingTapGetStorage(tap);
     free(context->split.realp);
     free(context->split.imagp);
@@ -162,14 +162,14 @@ void finalize(MTAudioProcessingTapRef tap)
 
 void prepare(MTAudioProcessingTapRef tap, CMItemCount maxFrames, const AudioStreamBasicDescription *processingFormat)
 {
-    NSLog(@"[Prism]Preparing the Audio Tap Processor");
+    //NSLog(@"[Prism]Preparing the Audio Tap Processor");
     AVAudioTapProcessorContext * context = (AVAudioTapProcessorContext*)MTAudioProcessingTapGetStorage(tap);
     context->sampleRate = processingFormat->mSampleRate;
 }
 
 void unprepare(MTAudioProcessingTapRef tap)
 {
-    NSLog(@"[Prism]Unpreparing the Audio Tap Processor");
+    //NSLog(@"[Prism]Unpreparing the Audio Tap Processor");
 }
 
 void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
@@ -180,7 +180,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
                    flagsOut, NULL, numberFramesOut);
     if (err)
     {
-    	NSLog(@"[Prism]Error from GetSourceAudio: %ld", err);
+    	//NSLog(@"[Prism]Error from GetSourceAudio: %ld", err);
     	return;
     }
  
@@ -265,7 +265,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 	AVMutableAudioMixInputParameters *inputParams = [AVMutableAudioMixInputParameters audioMixInputParametersWithTrack:audioTrack];
 
-	NSLog(@"[Prism]Creating the audio tap");
+	//NSLog(@"[Prism]Creating the audio tap");
 	// Create a processing tap for the input parameters
 	MTAudioProcessingTapCallbacks callbacks;
 	callbacks.version = kMTAudioProcessingTapCallbacksVersion_0;
@@ -281,7 +281,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	OSStatus err = MTAudioProcessingTapCreate(kCFAllocatorDefault, &callbacks,
 	 kMTAudioProcessingTapCreationFlag_PostEffects, &tap);
 	if (err || !tap) {
-	    NSLog(@"[Prism]Unable to create the Audio Processing Tap");
+	    //NSLog(@"[Prism]Unable to create the Audio Processing Tap");
 	    return;
 	}
 	assert(tap);
@@ -413,6 +413,8 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 -(void)_updateTitles {
 	%orig;
 
+	//NSLog(@"_updateTitles");
+
 	//this utility will only be used for iOS devices on 8.4+
 	if(![[[UIDevice currentDevice] systemVersion] isEqualToString:@"8.4"] || !tweakEnabled)
 		return;
@@ -422,7 +424,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	if(!view)
 		return;
 
-	NSLog(@"[Prism]Attemtpting to add gesture recognizer from MNPVC.");
+	//NSLog(@"[Prism]Attemtpting to add gesture recognizer from MNPVC.");
 
 	BOOL added = NO;
 	for (UIGestureRecognizer * recognizer in view.gestureRecognizers) {
@@ -454,7 +456,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 	if(!tweakEnabled)
 	{
-		NSLog(@"[Prism]Tweak was not enabled, not adding visualizer or gesture recognizers to < 8.4.");
+		//NSLog(@"[Prism]Tweak was not enabled, not adding visualizer or gesture recognizers to < 8.4.");
 		return;
 	}
 
@@ -477,7 +479,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	    }
 
 		[[BeatVisualizerView sharedInstance] setFrame:self.bounds];
-		NSLog(@"[Prism]Added visualizer to the Music App.");
+		//NSLog(@"[Prism]Added visualizer to the Music App.: %@", self);
 	    [self addSubview:[BeatVisualizerView sharedInstance]];
 
 		BOOL added = NO;
@@ -493,6 +495,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	    }
 	}
 }
+
 
 %new -(void)longPress:(UILongPressGestureRecognizer*)gesture {
 	if(gesture.state == UIGestureRecognizerStateEnded)
@@ -512,12 +515,12 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 	MRMediaRemoteGetNowPlayingInfo(dispatch_get_main_queue(), ^(CFDictionaryRef result)
 	{
-		NSLog(@"[Prism]Getting info dictionary");
+		//NSLog(@"[Prism]Getting info dictionary");
 		NSDictionary * dict = (__bridge NSDictionary*)result;
 
 		if(!dict)
 		{
-			NSLog(@"[Prism]Dictionary is nil");
+			//NSLog(@"[Prism]Dictionary is nil");
 			return;
 		}
 
@@ -525,20 +528,20 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		if(!trackTitle)
 		{
-			NSLog(@"[Prism]TrackTitle is nil");
+			//NSLog(@"[Prism]TrackTitle is nil");
 			return;
 		}
 		
 		if(!cachedTitle)
 		{
-			NSLog(@"[Prism]Cached is nil");
+			//NSLog(@"[Prism]Cached is nil");
 			cachedTitle = [[NSString alloc] init];
 		}
 		else
 		{
 			if([trackTitle isEqualToString:cachedTitle])
 			{
-				NSLog(@"[Prism]The track colors have already been generated");
+				//NSLog(@"[Prism]The track colors have already been generated");
 				return;
 			}
 		}
@@ -547,13 +550,13 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		if(!image)
 		{
-			NSLog(@"[Prism]Image is nil");
+			//NSLog(@"[Prism]Image is nil");
 			return;
 		}
 
 		LEColorPicker * colorPicker = [[LEColorPicker alloc] init];
 		LEColorScheme *colorScheme = [colorPicker colorSchemeFromImage:image];
-		NSLog(@"[Prism] Valid Image %@ and scheme: %@", image, colorScheme);
+		//NSLog(@"[Prism] Valid Image %@ and scheme: %@", image, colorScheme);
 
 		int numComponents = CGColorGetNumberOfComponents([[colorScheme backgroundColor] CGColor]);
 		if(numComponents==4)
@@ -570,7 +573,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		if(!prismFlowPrimary || !prismFlowSecondary)
 		{
-			NSLog(@"[Prism]One of the colors is nil");
+			//NSLog(@"[Prism]One of the colors is nil");
 			return;
 		}
 
@@ -591,12 +594,12 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		UIColor * randColor2 = [UIColor colorWithRed:ranRed/255.0f green:ranGreen/255.0f blue:ranBlue/255.0f alpha:1.0f];
 
-		[[BeatVisualizerView sharedInstance] setRandomColorPrimary:randColor2];
+		[[BeatVisualizerView sharedInstance] setRandomColorSecondary:randColor2];
 
-		NSLog(@"[Prism]Colors have been generated, reassigning the cache and releasing.");
+		//NSLog(@"[Prism]Colors have been generated, reassigning the cache and releasing.");
 		if(cachedTitle)cachedTitle = nil;
 		cachedTitle = [NSString stringWithFormat:@"%@", trackTitle];
-		NSLog(@"[Prism]cachedTitle is %@ and trackTitle is %@ (should be same)", cachedTitle, trackTitle);
+		//NSLog(@"[Prism]cachedTitle is %@ and trackTitle is %@ (should be same)", cachedTitle, trackTitle);
 		colorScheme = nil;
 		colorPicker = nil;
 	});
@@ -604,13 +607,12 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 %end
 
-
 %hook MusicNowPlayingItemViewController
 
 -(id)artworkImage {
 	id orig = %orig;
 
-	NSLog(@"[Prism]Attempting to generate prism colors from the artwork image, %@", orig);
+	//NSLog(@"[Prism]Attempting to generate prism colors from the artwork image, %@", orig);
 
 	if(orig && tweakEnabled)
 	{
@@ -626,7 +628,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		LEColorPicker * colorPicker = [[LEColorPicker alloc] init];
 		LEColorScheme *colorScheme = [colorPicker colorSchemeFromImage:image];
-		NSLog(@"[Prism] Valid Image %@ and scheme: %@", image, colorScheme);
+		//NSLog(@"[Prism] Valid Image %@ and scheme: %@", image, colorScheme);
 
 		int numComponents = CGColorGetNumberOfComponents([[colorScheme backgroundColor] CGColor]);
 		if(numComponents==4)
@@ -643,7 +645,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		if(!prismFlowPrimary || !prismFlowSecondary)
 		{
-			NSLog(@"[Prism]One of the colors is nil");
+			//NSLog(@"[Prism]One of the colors is nil");
 			return;
 		}
 
@@ -664,9 +666,9 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		UIColor * randColor2 = [UIColor colorWithRed:ranRed/255.0f green:ranGreen/255.0f blue:ranBlue/255.0f alpha:1.0f];
 
-		[[BeatVisualizerView sharedInstance] setRandomColorPrimary:randColor2];
+		[[BeatVisualizerView sharedInstance] setRandomColorSecondary:randColor2];
 
-		NSLog(@"[Prism]Colors have been generated.");
+		//NSLog(@"[Prism]Colors have been generated.");
 
 		colorScheme = nil;
 		colorPicker = nil;
@@ -678,27 +680,27 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 - (void)layoutSubviews
 {
-	NSLog(@"[Prism]layoutSubviews");
+	//NSLog(@"[Prism]layoutSubviews");
 
 	%orig;
 
 	if(!tweakEnabled)
 	{
-		NSLog(@"[Prism]Tweak was not enabled, not adding visualizer from layoutSubviews.");
+		//NSLog(@"[Prism]Tweak was not enabled, not adding visualizer from layoutSubviews.");
 		return;
 	}
 
-	NSLog(@"Tweak is enabled");
+	//NSLog(@"Tweak is enabled");
 
 	UIView * superview = [self superview];
 
 	if(!superview)
 	{
-		NSLog(@"[Prism]Superview(layoutSubviews) was null.");
+		//NSLog(@"[Prism]Superview(layoutSubviews) was null.");
 		return;
 	}
 
-	NSLog(@"superview: %@", superview);
+	//NSLog(@"superview: %@", superview);
 
 	UIViewController * vc = MSHookIvar<UIViewController*>(superview,"_viewDelegate");
 
@@ -706,7 +708,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 	{
 		[[BeatVisualizerView sharedInstance] removeFromSuperview];
 		[[BeatVisualizerView sharedInstance] setFrame:self.bounds];
-		NSLog(@"[Prism]Added visualizer to the Music App.");
+		//NSLog(@"[Prism]Added visualizer to the Music App.");
 	    [self addSubview:[BeatVisualizerView sharedInstance]];
 	}
 }
@@ -731,7 +733,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 static void loadPrefs() 
 {
 	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
-	NSLog(@"Settings: %@", settings);
+	NSLog(@"[Prism]Settings: %@", settings);
 
 	if([settings objectForKey:@"enableTweak"]) {
 		tweakEnabled = [settings[@"enableTweak"] boolValue];
@@ -740,9 +742,9 @@ static void loadPrefs()
 	}
 
 	if (tweakEnabled) {
-        NSLog(@"[Prism]is enabled");
+        //NSLog(@"[Prism]is enabled");
     } else {
-        NSLog(@"[Prism]is NOT enabled");
+        //NSLog(@"[Prism]is NOT enabled");
     }
 
     if([settings objectForKey:@"colorStyle"]) {
@@ -816,7 +818,7 @@ static void loadPrefs()
 
 %ctor
 {
-	NSLog(@"[Prism]Loading Prism");
+	//NSLog(@"[Prism]Loading Prism");
 	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
                                 NULL,
                                 (CFNotificationCallback)loadPrefs,

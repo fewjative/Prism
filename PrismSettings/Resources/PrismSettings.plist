@@ -67,30 +67,6 @@
             <key>label</key>            <string>Overlay Color</string>
             <key>action</key>           <string>selectOverlayColor</string>
         </dict>
-        <dict>
-        	<key>cell</key>
-        	<string>PSGroupCell</string>
-        	<key>footerText</key>
-        	<string>The higher the slider value, the more visible the visualizer. Default is 100. Perform a respring after enabling or disabling the tweak. Selecting the 'My Own' color option will use the colors you have set yourself in the visualizer theme settings. Selecting the 'ColorFlow Generated' color option will use ColorFlow to determine the visualizer color. If you do not have ColorFlow installed OR ColorFlow does not support this current iOS version, colors will not be properly generated. Selecting the 'Prism Generated' color option will let this tweak determine the colors based off of the album artwork. Selecting the 'Random' color option will have this tweak generate random colors for each song. </string>
-        </dict>
-        <dict>
-        	<key>cell</key>
-        	<string>PSSliderCell</string>
-        	<key>default</key>
-        	<integer>100</integer>
-        	<key>showValue</key>
-        	<true/>
-        	<key>max</key>
-        	<integer>100</integer>
-        	<key>min</key>
-        	<integer>0</integer>
-        	<key>PostNotification</key>
-        	<string>com.joshdoctors.prism/settingschanged</string>
-        	<key>defaults</key>
-        	<string>com.joshdoctors.prism</string>
-        	<key>key</key>
-        	<string>transparency</string>
-        </dict>
 		<dict>
 			<key>PostNotification</key>
 			<string>com.joshdoctors.prism/settingschanged</string>
@@ -140,10 +116,56 @@
 			<string>Spectrum Settings</string>
 		</dict>
 		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Visualizer Transparency</string>
+		</dict>
+        <dict>
+        	<key>cell</key>
+        	<string>PSSliderCell</string>
+        	<key>default</key>
+        	<integer>100</integer>
+        	<key>showValue</key>
+        	<true/>
+        	<key>max</key>
+        	<integer>100</integer>
+        	<key>min</key>
+        	<integer>0</integer>
+        	<key>PostNotification</key>
+        	<string>com.joshdoctors.prism/settingschanged</string>
+        	<key>defaults</key>
+        	<string>com.joshdoctors.prism</string>
+        	<key>key</key>
+        	<string>transparency</string>
+        </dict>
+		<dict>
             <key>cell</key>             <string>PSButtonCell</string>
             <key>label</key>            <string>Restart Music App</string>
             <key>action</key>           <string>respring</string>
         </dict>
+        <dict>
+        	<key>cell</key>
+        	<string>PSGroupCell</string>
+        	<key>footerText</key>
+        	<string>To toggle off and on the visibility of the visualizer, perform a long press on the album art. The higher the slider value, the more visible the visualizer. Default is 100. Restarting the music app is only required after enabling or disabling the tweak. Selecting the 'My Own' color option will use the colors you have set yourself in the visualizer theme settings. Selecting the 'ColorFlow Generated' color option will use ColorFlow to determine the visualizer color. If you do not have ColorFlow installed OR ColorFlow does not support this current iOS version, colors will not be properly generated. Selecting the 'Prism Generated' color option will let this tweak determine the colors based off of the album artwork. Selecting the 'Random' color option will have this tweak generate random colors for each song.</string>
+        </dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>About</string>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>twitter</string>
+			<key>alignment</key>
+			<string>center</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>@Fewjative</string>
+		</dict>
 	</array>
 	<key>title</key>
 	<string>Options</string>
