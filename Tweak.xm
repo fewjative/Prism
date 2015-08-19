@@ -12,6 +12,7 @@
 #import "rocketbootstrap.h"
 #import "prismheaders.h"
 #import "LEColorPicker.h"
+#import "PrismAudioManager.h"
 
 #define LEFT_CHANNEL (0)
 #define RIGHT_CHANNEL (1)
@@ -22,22 +23,6 @@
 #define kDefaultCyanColor [[UIColor alloc] initWithRed:0.0f green:1.0f blue:1.0f alpha:1.0f]
 #define kDefaultMagenta [[UIColor alloc] initWithRed:1.0f green:0.0f blue:1.0f alpha:1.0f]
 #define prefPath @"/User/Library/Preferences/com.joshdoctors.prism.plist"
-
-typedef struct AVAudioTapProcessorContext {
-    Boolean supportedTapProcessingFormat;
-    Boolean isNonInterleaved;
-    Float64 sampleRate;
-    AudioUnit audioUnit;
-    Float64 sampleCount;
-    float leftChannelVolume;
-    float rightChannelVolume;
-    void *self;
-    float  * window;
-    float * inReal;
-    UInt32 numSamples;
-    COMPLEX_SPLIT split;
-    FFTSetup fftSetup;
-} AVAudioTapProcessorContext;
 
 static BOOL tweakEnabled = NO;
 static CGFloat theme = 0.0;
@@ -66,11 +51,14 @@ static float playerVolume = 1.0;
 static NSMutableArray * fftData = nil;
 static NSMutableArray * lsfftData = nil;
 static NSMutableArray * outData = nil;
+static NSInteger outDataLength = 1024;
+static NSInteger appState = 2;
 static double mag = 0;
+static BOOL isPaused = NO;
+static BOOL pastStatus = NO;
 static BOOL isPlaying = false;
 static BOOL hasProcessed = false;
 static MPAVItem *item = nil;
-static CADisplayLink  * displayLink = nil;
 static bool useDefaultLS = NO;
 static CPDistributedMessagingCenter * messagingCenter = nil;
 static MPAVItem *itemWithTap = nil;
@@ -122,258 +110,9 @@ static UIColor* colorWithString(NSString * stringToConvert)
 						   alpha:[[components objectAtIndex:3] floatValue]];
 }
 
-void init(MTAudioProcessingTapRef tap, void *clientInfo, void **tapStorageOut)
-{
-   //NSLog(@"[Prism]Initialising the Audio Tap Processor");
-   AVAudioTapProcessorContext * context = (AVAudioTapProcessorContext*)calloc(1, sizeof(AVAudioTapProcessorContext));
-   context->self = clientInfo;
-   context->sampleRate = NAN;
-   context->numSamples = 2048;
-
-   vDSP_Length log2n = log2f((float)context->numSamples);
-   int nOver2 = context->numSamples/2;
-
-   context->inReal = (float*)malloc(context->numSamples * sizeof(float));
-   context->split.realp = (float*)malloc(nOver2*sizeof(float));
-   context->split.imagp = (float*)malloc(nOver2*sizeof(float));
-
-   context->fftSetup = vDSP_create_fftsetup(log2n, FFT_RADIX2);
-   context->window = (float*)malloc(context->numSamples * sizeof(float));
-   vDSP_hann_window(context->window, context->numSamples, vDSP_HANN_DENORM);
-
-   *tapStorageOut = context;
-}
- 
-void finalize(MTAudioProcessingTapRef tap)
-{
-    //NSLog(@"[Prism]Finalizing the Audio Tap Processor, %@", tap);
-    AVAudioTapProcessorContext * context = (AVAudioTapProcessorContext*)MTAudioProcessingTapGetStorage(tap);
-    free(context->split.realp);
-    free(context->split.imagp);
-    free(context->inReal);
-    free(context->window);
-
-    context->fftSetup = nil;
-    context->self = nil;
-    free(context);
-
-    outData = nil;
-}
-
-void prepare(MTAudioProcessingTapRef tap, CMItemCount maxFrames, const AudioStreamBasicDescription *processingFormat)
-{
-    //NSLog(@"[Prism]Preparing the Audio Tap Processor");
-    AVAudioTapProcessorContext * context = (AVAudioTapProcessorContext*)MTAudioProcessingTapGetStorage(tap);
-    context->sampleRate = processingFormat->mSampleRate;
-}
-
-void unprepare(MTAudioProcessingTapRef tap)
-{
-    //NSLog(@"[Prism]Unpreparing the Audio Tap Processor");
-}
-
-void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
- MTAudioProcessingTapFlags flags, AudioBufferList *bufferListInOut,
- CMItemCount *numberFramesOut, MTAudioProcessingTapFlags *flagsOut)
-{	
-    OSStatus err = MTAudioProcessingTapGetSourceAudio(tap, numberFrames, bufferListInOut,
-                   flagsOut, NULL, numberFramesOut);
-    if (err)
-    {
-    	//NSLog(@"[Prism]Error from GetSourceAudio: %ld", err);
-    	return;
-    }
- 
- 	AVAudioTapProcessorContext * context = (AVAudioTapProcessorContext*)MTAudioProcessingTapGetStorage(tap);
-
- 	for (UInt32 i = 0; i < bufferListInOut->mNumberBuffers; i++)
-    {
-        AudioBuffer *pBuffer = &bufferListInOut->mBuffers[i];
-        UInt32 cSamples = numberFrames * (context->isNonInterleaved ? 1 : pBuffer->mNumberChannels);
-        
-        float *pData = (float *)pBuffer->mData;
-        
-        float rms = 0.0f;
-        for (UInt32 j = 0; j < cSamples; j++)
-        {
-            rms += pData[j] * pData[j];
-        }
-        if (cSamples > 0)
-        {
-            rms = sqrtf(rms / cSamples);
-        }
-        
-        if (0 == i)
-        {
-            leftVol = rms;
-        }
-        if (1 == i || (0 == i && 1 == bufferListInOut->mNumberBuffers))
-        {
-        	rightVol = rms;
-        }
-    }
-
-    AudioBuffer * firstBuffer = &bufferListInOut->mBuffers[1];
-    float * bufferData = (float*)firstBuffer->mData;
-    vDSP_vmul(bufferData, 1 , context->window, 1, context->inReal, 1, context->numSamples);
-    vDSP_ctoz((COMPLEX*)context->inReal, 2, &context->split, 1, context->numSamples/2);
-    vDSP_Length log2n = log2f((float)context->numSamples);
-    vDSP_fft_zrip(context->fftSetup, &context->split, 1, log2n, FFT_FORWARD);
-    context->split.imagp[0] = 0.0;
-
-    UInt32 i;
-    if(outData)
-    	outData = nil;
-
-    outData = [[NSMutableArray alloc] init];
-    [outData addObject:[NSNumber numberWithFloat:0]];
-
-    for(i=1; i < context->numSamples/2; i++)//originally context->numSamples
-    {
-    	float power = sqrtf(context->split.realp[i] * context->split.realp[i] + context->split.imagp[i] * context->split.imagp[i]);   	
-    	[outData addObject:[NSNumber numberWithFloat:power]];
-    }
-    hasProcessed = true;
-}
-
 %group NowPlayingArtView
 
-
 %hook MPAVController
-
-%new -(void)addAudioTap:(MPAVItem*)item
-{
-	if(itemWithTap)
-	{
-		MTAudioProcessingTapRef tap2 = ((AVMutableAudioMixInputParameters*)itemWithTap.playerItem.audioMix.inputParameters[0]).audioTapProcessor;
-		itemWithTap.playerItem.audioMix = nil;
-
-		if(tap2)
-			CFRelease(tap2);
-	}
-
-	//If the sharedAVPlayer is null, audio is not coming from the Music App.
-	if([%c(MusicAVPlayer) sharedAVPlayer]==nil)
-		return;
-
-	AVAssetTrack * audioTrack;
-
-	if([[[[item playerItem] asset] tracks] count] == 0 )
-		return;
-
-	audioTrack = [[[[item playerItem] asset] tracks] objectAtIndex:0];
-
-	AVMutableAudioMixInputParameters *inputParams = [AVMutableAudioMixInputParameters audioMixInputParametersWithTrack:audioTrack];
-
-	//NSLog(@"[Prism]Creating the audio tap");
-	// Create a processing tap for the input parameters
-	MTAudioProcessingTapCallbacks callbacks;
-	callbacks.version = kMTAudioProcessingTapCallbacksVersion_0;
-	callbacks.clientInfo = (__bridge void *)(self);
-	callbacks.init = init;
-	callbacks.prepare = prepare;
-	callbacks.process = process;
-	callbacks.unprepare = unprepare;
-	callbacks.finalize = finalize;
-	
-	MTAudioProcessingTapRef tap;
-	// The create function makes a copy of our callbacks struct
-	OSStatus err = MTAudioProcessingTapCreate(kCFAllocatorDefault, &callbacks,
-	 kMTAudioProcessingTapCreationFlag_PostEffects, &tap);
-	if (err || !tap) {
-	    //NSLog(@"[Prism]Unable to create the Audio Processing Tap");
-	    return;
-	}
-	assert(tap);
-
-	inputParams.audioTapProcessor = tap;
-	AVMutableAudioMix * audioMix = [AVMutableAudioMix audioMix];
-	audioMix.inputParameters = @[inputParams];
-	[item playerItem].audioMix = audioMix;
-	itemWithTap = item;
-
-	if(!displayLink)
-	{
-		displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateMusicMeters)];
-		[displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
-	}
-}
-
-
-%new - (void)updateMusicMeters
-{
-	if(!tweakEnabled)
-		return;
-
-	MusicAVPlayer * mp  = NULL;
-	if( [[[UIDevice currentDevice] systemVersion] isEqualToString:@"8.4"])
-	{
-		MusicApplicationDelegate * del = (MusicApplicationDelegate*)[[UIApplication sharedApplication] delegate];
-		MusicRemoteController * rc = [del remoteController];
-		mp = [rc player];
-	}
-	else
-	{
-		MARemoteController * rc = [[UIApplication sharedApplication] remoteController];
-		mp = [rc player];
-	}
-
-	if([mp rate]==0)
-	{
-		if([BeatVisualizerView sharedInstance].alpha==(transparency/100.0))
-		{
-			[UIView animateWithDuration:.4
-				animations:^{
-					[BeatVisualizerView sharedInstance].alpha = 0;
-				}];
-		}
-		return;
-	}
-
-	if([BeatVisualizerView sharedInstance].alpha==0)
-	{
-		[UIView animateWithDuration:.4
-			animations:^{
-				[BeatVisualizerView sharedInstance].alpha = (transparency/100.0);
-			}];
-	}
-
-	avgVol = (leftVol + rightVol)/2.0;
-	playerVolume = [[[mp avPlayer] _player] volume];
-
-	if(outData)
-	{
-		if(hasProcessed)
-		{
-			if(fftData)
-			{
-				fftData = nil;
-			}
-			fftData = [[NSMutableArray alloc] initWithArray:outData copyItems:YES];
-			hasProcessed = !hasProcessed;
-		}
-
-		int appState = [[UIApplication sharedApplication] applicationState];
-
-		//state = 0 -> inside the app
-		//state = 1 -> on the springboard
-		//state = 2 -> on the lockscreen
-		if(appState!=2)//appState = 0 when we are in the app, thus update
-		{
-			[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
-			[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
-			[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
-			[[BeatVisualizerView sharedInstance] setAlpha:(transparency/100.0)];
-			[[BeatVisualizerView sharedInstance] setBarHeight:(barHeight/100.0)];
-			[[BeatVisualizerView sharedInstance] setOverlayAlbumArt:overlayAlbumArt];
-			[[BeatVisualizerView sharedInstance] setOverlayColor:overlayColor];
-			[[BeatVisualizerView sharedInstance] setColorStyle:colorStyle];
-			[[BeatVisualizerView sharedInstance] setSpectrumStyle:spectrumStyle];
-			[[BeatVisualizerView sharedInstance] setNumBars:spectrumBarCount];
-			[[BeatVisualizerView sharedInstance] updateWithLevel:avgVol withData:fftData withMag:mag withVol:playerVolume withType:theme];
-		}
-	}
-}
 
 -(void)_itemDidChange:(id)arg1{
 	%orig;
@@ -385,23 +124,211 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 		return;
 	}
 
-	item = self.currentItem;
+	[[NSNotificationCenter defaultCenter] removeObserver:self name:@"didChangeSpectrumData" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didChangeSpectrumData:) name:@"didChangeSpectrumData" object:nil];
 
-	if([item playerItem].audioMix==nil)
+	if([self.currentItem playerItem].audioMix==nil)
 	{
-		[self addAudioTap:item];
+		//Audio is not coming from the music app if the sharedAVPlayer is nil
+		if([%c(MusicAVPlayer) sharedAVPlayer]==nil)
+			return;
+		else
+			[[PrismAudioManager defaultManager] tapStreamFromItem:[self currentItem]];
 	}
 }
 
--(id)currentItem
-{
-	if(!tweakEnabled)
-		return %orig;
-	else
+%end
+
+%hook MusicAVPlayer
+
+%new -(void)didChangeSpectrumData:(NSNotification*)notification{
+
+	dispatch_async(dispatch_get_main_queue(), ^ 
 	{
-		item = %orig;
-		return item;
+		MusicAVPlayer * mp  = NULL;
+		if( [[[UIDevice currentDevice] systemVersion] isEqualToString:@"8.4"])
+		{
+			MusicApplicationDelegate * del = (MusicApplicationDelegate*)[[UIApplication sharedApplication] delegate];
+			MusicRemoteController * rc = [del remoteController];
+			mp = [rc player];
+		}
+		else
+		{
+			MARemoteController * rc = [[UIApplication sharedApplication] remoteController];
+			mp = [rc player];
+		}
+
+		if(pastStatus != [mp rate])
+		{
+			if([mp rate] ==0 )
+			{
+				NSLog(@"Pause");
+				[[BeatVisualizerView sharedInstance] pause];
+			}
+			else
+			{
+				NSLog(@"Play");
+				[[BeatVisualizerView sharedInstance] play];
+			}
+		}
+
+		if([mp rate] == 0)
+			pastStatus = 0;
+		else
+			pastStatus = 1;
+
+		NSArray * spectrumData = [notification.userInfo objectForKey:@"spectrumData"];
+		avgVol = [[notification.userInfo objectForKey:@"avgVol"] floatValue];
+		NSInteger length = [[notification.userInfo objectForKey:@"spectrumDataLength"] intValue];
+		playerVolume = [[[mp avPlayer] _player] volume];
+
+		appState = [[UIApplication sharedApplication] applicationState];
+
+		//state = 0 -> inside the app
+		//state = 1 -> on the springboard
+		//state = 2 -> on the lockscreen
+		if(appState == 0)//appState = 0 when we are in the app, thus update
+		{
+			[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
+			[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
+			[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
+			[[BeatVisualizerView sharedInstance] setTransparency:(transparency/100.0)];
+			[[BeatVisualizerView sharedInstance] setBarHeight:(barHeight/100.0)];
+			[[BeatVisualizerView sharedInstance] setOverlayAlbumArt:overlayAlbumArt];
+			[[BeatVisualizerView sharedInstance] setOverlayColor:overlayColor];
+			[[BeatVisualizerView sharedInstance] setColorStyle:colorStyle];
+			[[BeatVisualizerView sharedInstance] setSpectrumStyle:spectrumStyle];
+			[[BeatVisualizerView sharedInstance] setNumBars:spectrumBarCount];
+			[[BeatVisualizerView sharedInstance] updateWithLevel:avgVol withData:spectrumData withLength:length withMag:mag withVol:playerVolume withType:theme];
+		} 
+		else if (appState == 2)
+		{
+			if(!messagingCenter)
+			{
+				messagingCenter = [CPDistributedMessagingCenter centerNamed:@"com.joshdoctors.prism"];
+				rocketbootstrap_distributedmessagingcenter_apply(messagingCenter);
+			}
+
+			[messagingCenter sendMessageName:@"getAudioData" userInfo:[NSDictionary dictionaryWithObjectsAndKeys:
+					[NSNumber numberWithFloat:avgVol], @"level",
+					[NSNumber numberWithFloat:playerVolume], @"playerVolume",
+					spectrumData, @"fftData",[NSNumber numberWithInt:length], @"outDataLength", nil]];
+		}
+	}); 
+}
+
+%end
+
+%hook SBMediaController
+
+-(void)setNowPlayingInfo:(id)info{
+	%orig;
+	NSLog(@"[Prism]setNowPlayingInfo");
+
+	NSString * ident = [[[%c(SBMediaController) sharedInstance] nowPlayingApplication] bundleIdentifier];
+
+	if(ident)
+	{
+		if(![ident isEqualToString:@"com.apple.Music"])
+		{
+			NSLog(@"[Prism]Audio is not from the music app, exiting.");
+			return;
+		}
 	}
+
+	/*[[NSNotificationCenter defaultCenter] postNotification:[NSNotification notificationWithName:@"GeneratedPrismColors" object:nil userInfo:@{
+		@"volume" : @"Hi"
+	}]];*/
+
+	MRMediaRemoteGetNowPlayingInfo(dispatch_get_main_queue(), ^(CFDictionaryRef result)
+	{
+		//NSLog(@"[Prism]Getting info dictionary");
+		NSDictionary * dict = (__bridge NSDictionary*)result;
+
+		if(!dict)
+		{
+			//NSLog(@"[Prism]Dictionary is nil");
+			return;
+		}
+
+		NSString * trackTitle = [dict objectForKey:(__bridge NSString*)kMRMediaRemoteNowPlayingInfoTitle];
+
+		if(!trackTitle)
+		{
+			//NSLog(@"[Prism]TrackTitle is nil");
+			return;
+		}
+		
+		if(!cachedTitle)
+		{
+			//NSLog(@"[Prism]Cached is nil");
+			cachedTitle = [[NSString alloc] init];
+		}
+		else
+		{
+			if([trackTitle isEqualToString:cachedTitle])
+			{
+				//NSLog(@"[Prism]The track colors have already been generated");
+				return;
+			}
+		}
+
+		UIImage * image = [UIImage imageWithData:[dict objectForKey:(__bridge NSData*)kMRMediaRemoteNowPlayingInfoArtworkData]];
+
+		if(!image)
+		{
+			//NSLog(@"[Prism]Image is nil");
+			return;
+		}
+
+		LEColorPicker * colorPicker = [[LEColorPicker alloc] init];
+		LEColorScheme *colorScheme = [colorPicker colorSchemeFromImage:image];
+		//NSLog(@"[Prism] Valid Image %@ and scheme: %@", image, colorScheme);
+
+		int numComponents = CGColorGetNumberOfComponents([[colorScheme backgroundColor] CGColor]);
+		if(numComponents==4)
+		{
+			const CGFloat * components = CGColorGetComponents([[colorScheme backgroundColor] CGColor]);
+			prismFlowPrimary = [UIColor colorWithRed:components[0] green:components[1] blue:components[2] alpha:components[3]];
+		}
+		numComponents = CGColorGetNumberOfComponents([[colorScheme primaryTextColor] CGColor]);
+		if(numComponents==4)
+		{
+			const CGFloat * components = CGColorGetComponents([[colorScheme primaryTextColor] CGColor]);
+			prismFlowSecondary = [UIColor colorWithRed:components[0] green:components[1] blue:components[2] alpha:components[3]];
+		}
+
+		if(!prismFlowPrimary || !prismFlowSecondary)
+		{
+			//NSLog(@"[Prism]One of the colors is nil");
+			return;
+		}
+
+		[[BeatVisualizerView sharedInstance] setPrismFlowPrimary:prismFlowPrimary];
+		[[BeatVisualizerView sharedInstance] setPrismFlowSecondary:prismFlowSecondary];
+
+		NSInteger ranRed = arc4random()%255;
+		NSInteger ranGreen = arc4random()%255;
+		NSInteger ranBlue = arc4random()%255;
+
+		UIColor * randColor = [UIColor colorWithRed:ranRed/255.0f green:ranGreen/255.0f blue:ranBlue/255.0f alpha:1.0f];
+
+		[[BeatVisualizerView sharedInstance] setRandomColorPrimary:randColor];
+
+		ranRed = arc4random()%255;
+		ranGreen = arc4random()%255;
+		ranBlue = arc4random()%255;
+
+		UIColor * randColor2 = [UIColor colorWithRed:ranRed/255.0f green:ranGreen/255.0f blue:ranBlue/255.0f alpha:1.0f];
+
+		[[BeatVisualizerView sharedInstance] setRandomColorSecondary:randColor2];
+		//NSLog(@"[Prism]Colors have been generated, reassigning the cache and releasing.");
+		if(cachedTitle)cachedTitle = nil;
+		cachedTitle = [NSString stringWithFormat:@"%@", trackTitle];
+		//NSLog(@"[Prism]cachedTitle is %@ and trackTitle is %@ (should be same)", cachedTitle, trackTitle);
+		colorScheme = nil;
+		colorPicker = nil;
+	});
 }
 
 %end
@@ -596,6 +523,17 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		[[BeatVisualizerView sharedInstance] setRandomColorSecondary:randColor2];
 
+		/*if(!messagingCenter)
+		{
+			messagingCenter = [CPDistributedMessagingCenter centerNamed:@"com.joshdoctors.prism"];
+			rocketbootstrap_distributedmessagingcenter_apply(messagingCenter);
+		}
+
+		[messagingCenter sendMessageName:@"getColorData" userInfo:[NSDictionary dictionaryWithObjectsAndKeys:
+				prismFlowPrimary, @"prismFlowPrimary",
+				prismFlowSecondary, @"prismFlowSecondary",
+					randColor, @"randomColorPrimary",randColor2, @"randomColorSecondary", nil]];*/
+
 		//NSLog(@"[Prism]Colors have been generated, reassigning the cache and releasing.");
 		if(cachedTitle)cachedTitle = nil;
 		cachedTitle = [NSString stringWithFormat:@"%@", trackTitle];
@@ -668,6 +606,17 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 		[[BeatVisualizerView sharedInstance] setRandomColorSecondary:randColor2];
 
+		/*if(!messagingCenter)
+		{
+			messagingCenter = [CPDistributedMessagingCenter centerNamed:@"com.joshdoctors.prism"];
+			rocketbootstrap_distributedmessagingcenter_apply(messagingCenter);
+		}
+
+		[messagingCenter sendMessageName:@"getColorData" userInfo:[NSDictionary dictionaryWithObjectsAndKeys:
+				prismFlowPrimary, @"prismFlowPrimary",
+				prismFlowSecondary, @"prismFlowSecondary",
+					randColor, @"randomColorPrimary",randColor2, @"randomColorSecondary", nil]];*/
+
 		//NSLog(@"[Prism]Colors have been generated.");
 
 		colorScheme = nil;
@@ -727,6 +676,129 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
 
 %end
 
+%hook _NowPlayingArtView
+
+- (id)initWithFrame:(CGRect)frame
+{
+	NSLog(@"[Prism]LockScreen initWithFrame");
+	id orig = %orig;
+
+	if(!tweakEnabled)
+		return orig;
+
+	NSString * ident = [[[%c(SBMediaController) sharedInstance] nowPlayingApplication] bundleIdentifier];
+
+	if(ident)
+	{
+		if(![ident isEqualToString:@"com.apple.Music"])
+			return orig;
+	}
+
+	NSLog(@"[Prism]Tweak is enabled and audio coming from stock Music");
+
+	if(!messagingCenter)
+	{
+		messagingCenter = [CPDistributedMessagingCenter centerNamed:@"com.joshdoctors.prism"];
+	}
+
+	if(![messagingCenter doesServerExist])
+	{
+		rocketbootstrap_distributedmessagingcenter_apply(messagingCenter);
+		[messagingCenter runServerOnCurrentThread];
+		[messagingCenter registerForMessageName:@"getAudioData" target:self selector:@selector(getAudioData:withUserInfo:)]; 
+		[messagingCenter registerForMessageName:@"getColorData" target:self selector:@selector(getColorData:withUserInfo:)];
+	}
+
+	BOOL added = NO;
+	for (UIGestureRecognizer * recognizer in self.gestureRecognizers) {
+		if([recognizer isKindOfClass:[%c(UILongPressGestureRecognizer) class]])
+			added = YES;
+	}
+
+    if(!added)
+    {
+    	UIGestureRecognizer * longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
+    	[self addGestureRecognizer:longPress];
+    }
+
+	return orig;
+}
+
+%new -(void)longPress:(UILongPressGestureRecognizer*)gesture {
+	if(gesture.state == UIGestureRecognizerStateEnded)
+	{
+		[[BeatVisualizerView sharedInstance] toggleVisibility];
+	}
+}
+
+/*%new - (void)getColorData:(NSString*)name withUserInfo:(NSDictionary*)dict
+{
+	NSLog(@"GetColorData");
+	[[BeatVisualizerView sharedInstance] setPrismFlowPrimary:dict[@"prismFlowPrimary"]];
+	[[BeatVisualizerView sharedInstance] setPrismFlowSecondary:dict[@"prismFlowSecondary"]];
+	[[BeatVisualizerView sharedInstance] setRandomColorPrimary:dict[@"randomColorPrimary"]];
+	[[BeatVisualizerView sharedInstance] setRandomColorSecondary:dict[@"randomColorSecondary"]];
+}*/
+
+%new - (void)getAudioData:(NSString*)name withUserInfo:(NSDictionary*)dict
+{
+	avgVol = [dict[@"level"] floatValue];
+	playerVolume = [dict[@"playerVolume"] floatValue];
+	outDataLength = [dict[@"outDataLength"] intValue];
+	
+	if(dict[@"fftData"] && [dict[@"fftData"] isKindOfClass:[NSMutableArray class]])
+		fftData = dict[@"fftData"];
+
+	if(pastStatus != [[%c(SBMediaController) sharedInstance] isPaused])
+	{
+		if([[%c(SBMediaController) sharedInstance] isPaused])
+			[[BeatVisualizerView sharedInstance] pause];
+		else
+			[[BeatVisualizerView sharedInstance] play];
+	}
+
+	pastStatus = [[%c(SBMediaController) sharedInstance] isPaused];
+
+	[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
+	[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
+	[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
+	[[BeatVisualizerView sharedInstance] setTransparency:(transparency/100.0)];
+	[[BeatVisualizerView sharedInstance] setBarHeight:(barHeight/100.0)];
+	[[BeatVisualizerView sharedInstance] setOverlayAlbumArt:overlayAlbumArt];
+	[[BeatVisualizerView sharedInstance] setOverlayColor:overlayColor];
+	[[BeatVisualizerView sharedInstance] setColorStyle:colorStyle];
+	[[BeatVisualizerView sharedInstance] setSpectrumStyle:spectrumStyle];
+	[[BeatVisualizerView sharedInstance] setNumBars:spectrumBarCount];
+	[[BeatVisualizerView sharedInstance] updateWithLevel:avgVol withData:fftData withLength:outDataLength withMag:mag withVol:playerVolume withType:theme];
+}
+
+- (void)layoutSubviews
+{
+	NSLog(@"[Prism]LockScreen layoutSubviews");
+	%orig;
+
+	if(useDefaultLS || !tweakEnabled)
+		return;
+
+	NSString * ident = [[[%c(SBMediaController) sharedInstance] nowPlayingApplication] bundleIdentifier];
+
+	if(ident)
+	{
+		if(![ident isEqualToString:@"com.apple.Music"])
+			return;
+	}
+
+	NSLog(@"[Prism]Tweak is enabled and audio coming from stock Music");
+
+	useDefaultLS = YES;
+	[[BeatVisualizerView sharedInstance] removeFromSuperview];
+	[[BeatVisualizerView sharedInstance] setFrame:[self artworkView].frame];
+	NSLog(@"[Prism]Added BeatVisualizerView to the LockScreen");
+    [self addSubview:[BeatVisualizerView sharedInstance]];
+    useDefaultLS = NO;
+}
+
+%end
 
 %end
 
@@ -826,6 +898,6 @@ static void loadPrefs()
                                 NULL,
                                 CFNotificationSuspensionBehaviorCoalesce);
 	loadPrefs();
-
+	dlopen("/System/Library/SpringBoardPlugins/NowPlayingArtLockScreen.lockbundle/NowPlayingArtLockScreen", 2);
 	%init(NowPlayingArtView);
 }

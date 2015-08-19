@@ -70,7 +70,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
 - (void)setup
 {
-    NSLog(@"[Prism]Setup started");
+    NSLog(@"[Prism]Visualizer setup started");
     self.primaryColor = [UIColor cyanColor];
     self.secondaryColor = [UIColor magentaColor];
     self.colorFlowPrimary = [UIColor blackColor];
@@ -92,7 +92,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
     self.createWave = false;
     self.waves = [[NSMutableArray alloc] init];
     self.type = 0.0;
-    self.outData = nil;
+    self.outData = [NSMutableArray arrayWithCapacity:2];
     self.avg = 0.0;
     self.numBars = 30;
     self.barHeight = 1.0;
@@ -112,6 +112,26 @@ static UIColor* colorWithString(NSString * stringToConvert)
     self.secondaryWaveLineWidth = 1.0f;
     self.spectrumStyle = 0;
     self.isVisible = NO;
+    self.outDataLength = 1024;
+
+    self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(setNeedsDisplay)];
+    [self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+
+    /*self.waveformLayer = [AudioPlotWaveformLayer layer];
+    self.waveformLayer.frame = self.bounds;
+    self.waveformLayer.lineWidth = 1.0f;
+    self.waveformLayer.fillColor = [[UIColor clearColor] CGColor];
+    self.waveformLayer.backgroundColor = [[UIColor clearColor] CGColor];
+    self.waveformLayer.strokeColor = [[UIColor cyanColor] CGColor];
+    self.waveformLayer.opaque = YES;
+
+    [self.layer insertSublayer:self.waveformLayer atIndex:0];*/
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"GeneratedPrismColors" object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                        selector:@selector(generatedPrismColors:)
+                                        name:@"GeneratedPrismColors"
+                                        object:nil];
 
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"ColorFlowMusicAppColorReversionNotification" object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"ColorFlowMusicAppColorizationNotification" object:nil];
@@ -139,7 +159,18 @@ static UIColor* colorWithString(NSString * stringToConvert)
                                             name:@"ColorFlowLockScreenColorizationNotification"
                                             object:nil];
 
-    NSLog(@"[Prism]Setup ended");
+    //self.points = (CGPoint*)calloc(8192, sizeof(CGPoint));
+    //self.pointCount = 100;
+    NSLog(@"[Prism]Visualizer setup ended");
+}
+
+-(void)dealloc {
+    [self.displayLink invalidate];
+    self.displayLink = nil;
+}
+
+-(void)generatedPrismColors:(NSNotification*)notification{
+    NSLog(@"[Prism]GeneratedPrismColors BeatVisualizerView");
 }
 
 -(void)revertUI:(NSNotification*)notification{
@@ -172,15 +203,56 @@ static UIColor* colorWithString(NSString * stringToConvert)
     self.isVisible = !self.isVisible;
 }
 
--(void)updateWithLevel:(CGFloat)level withData:(NSMutableArray*)data withMag:(double)mag withVol:(CGFloat)vol withType:(CGFloat)type
+/*- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.waveformLayer.frame = self.bounds;
+    if(self.type == self.type)
+        [self redraw];
+    [CATransaction commit];
+}*/
+
+-(void)pause {
+
+    [UIView animateWithDuration:.4
+        animations:^{
+            self.alpha = 0;
+        }];
+}
+
+-(void)play {
+    [UIView animateWithDuration:.4
+                animations:^{
+                    self.alpha = self.transparency;
+        }];
+}
+
+-(void)updateWithLevel:(CGFloat)level withData:(NSMutableArray*)data withLength:(NSInteger)length withMag:(double)mag withVol:(CGFloat)vol withType:(CGFloat)type
 {
     self.phase += self.phaseShift;
     self.volume = vol;
-    self.outData = data;
+    self.outDataLength = length;
     self.type = type;
     float value = meterTable.ValueAt( 20.0f * log10(level*vol));
     self.siriAmplitude = fmax(value, self.idleAmplitude);
     self.amplitude = self.siriAmplitude * self.bounds.size.height;
+
+    self.alpha = self.transparency;
+
+    @synchronized(self)
+    {
+        if(self.outData.count > 2)
+        {
+            [self.outData removeObjectAtIndex:0];
+        }
+
+        if(data)
+        {
+            [self.outData addObject:data];
+        }
+    }
 
     NSMutableIndexSet *discard = [NSMutableIndexSet indexSet];
 
@@ -203,8 +275,15 @@ static UIColor* colorWithString(NSString * stringToConvert)
     }
 
     self.priorAmplitude = self.amplitude;
+
     [self setColors];
-    [self setNeedsDisplay];
+
+    /*if(2 == 2.0 )
+    {
+        [self adjustData];
+        [self redraw];
+        return;
+    }*/
 }
 
 -(void)setColors {
@@ -220,7 +299,23 @@ static UIColor* colorWithString(NSString * stringToConvert)
 }
 
 - (void)drawRect:(CGRect)rect
-{    
+{   
+    NSArray * currentSpectrumData = nil;
+
+    @synchronized(self)
+    {
+        if(self.outData.count > 0)
+        {
+            currentSpectrumData = [[self.outData objectAtIndex:0] copy];
+        }
+
+        if(self.outData.count > 1)
+        {
+            [self.outData removeObjectAtIndex:0];
+        }
+    }
+
+
     if(!self.isVisible)
         return;
 
@@ -239,7 +334,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
     if(self.type==0.0)
     {
         int num_circles = 8;
-        int bin_size = floor([self.outData count]/num_circles);
+        int bin_size = floor(self.outDataLength/num_circles);
         CGRect barRect;
         CGFloat minWidth = rect.size.height/4.0;
         for(int i=0; i < num_circles/2; i++)
@@ -247,7 +342,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
             self.sum = 0;
             for(int j=0; j < bin_size; j++)
             {
-                self.sum += [self.outData[(i * bin_size) + j] floatValue];
+                self.sum += [[currentSpectrumData objectAtIndex:((i * bin_size) + j)] floatValue];
             }
             self.avg = self.sum/bin_size;
             self.scaled_avg = (self.avg / self.mag ) * (rect.size.height/1.5) * self.volume;
@@ -341,12 +436,11 @@ static UIColor* colorWithString(NSString * stringToConvert)
     }
     else if(self.type==1.0)
     {
-        int bin_size = floor([self.outData count]/(self.numBars*2));
+        int bin_size = floor(self.outDataLength/(self.numBars*2));
         CGRect barRect;
         CGFloat centerX = (rect.size.width/2.0);
         CGFloat centerY = (rect.size.height/2.0);
         CGFloat frameHeight = rect.size.height * self.barHeight;
-        NSLog(@"%f %f %f", rect.size.height, self.barHeight, frameHeight);
 
         if(self.colorStyle == 0)
         {
@@ -386,7 +480,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
             self.sum = 0;
             for(long j=0; j < bin_size; j++)
             {
-                self.sum += [self.outData[(i * bin_size) + j] floatValue];
+                self.sum +=[[currentSpectrumData objectAtIndex:((i * bin_size) + j)] floatValue];
             }
             self.avg = self.sum/bin_size;
             self.bar_width = (rect.size.width/(self.numBars*2))*2.0;
@@ -436,6 +530,96 @@ static UIColor* colorWithString(NSString * stringToConvert)
     {
         NSLog(@"[Prism]Not a valid type");
     }
+}
+
+/*- (void)adjustData
+{
+    self.max  = 0.0;
+    CGPoint *points = self.points;
+    for (int i = 0; i < 100; i++)
+    {
+        points[i].x = i;
+        float y = self.outData[i+100];
+        if( y > self.max)
+            self.max = y;
+        if(y > 1 )
+            points[i].y = 1;
+        else
+            points[i].y = y;
+    }
+    points[0].y = points[100 - 1].y = 0.0f;
+    NSLog(@"Max: %f", self.max);
+    self.pointCount = 100;
+}*/
+
+- (void)redraw
+{
+    CGRect frame = [self.waveformLayer frame];
+    CGPathRef path = [self createPathWithPoints:self.points
+                                     pointCount:self.pointCount
+                                         inRect:frame];
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.waveformLayer.path = path;
+    [CATransaction commit];
+
+    CGPathRelease(path);
+}
+
+//------------------------------------------------------------------------------
+
+- (CGPathRef)createPathWithPoints:(CGPoint *)points
+                  pointCount:(UInt32)pointCount
+                      inRect:(CGRect)rect
+{
+    CGMutablePathRef path = NULL;
+    if (pointCount > 0)
+    {
+        path = CGPathCreateMutable();
+        double xscale = (rect.size.width) / ((float)self.pointCount);
+        double halfHeight = floor(rect.size.height / 2.0);
+        int deviceOriginFlipped = -1;
+        CGAffineTransform xf = CGAffineTransformIdentity;
+        CGFloat translateY = 0.0f;
+
+        translateY = halfHeight + rect.origin.y;
+        
+        xf = CGAffineTransformTranslate(xf, 0.0, translateY);
+        double yScaleFactor = halfHeight;
+        xf = CGAffineTransformScale(xf, xscale, deviceOriginFlipped * yScaleFactor);
+        CGPathAddLines(path, &xf, self.points, self.pointCount);
+
+        //xf = CGAffineTransformScale(xf, 1.0f, -1.0f);
+        //CGPathAddLines(path, &xf, self.points, self.pointCount);
+        
+        CGPathCloseSubpath(path);
+    }
+    return path;
+}
+
+@end
+
+@implementation AudioPlotWaveformLayer
+
+- (id<CAAction>)actionForKey:(NSString *)event
+{
+    if ([event isEqualToString:@"path"])
+    {
+        if ([CATransaction disableActions])
+        {
+            return nil;
+        }
+        else
+        {
+            CABasicAnimation *animation = [CABasicAnimation animation];
+            animation.timingFunction = [CATransaction animationTimingFunction];
+            animation.duration = [CATransaction animationDuration];
+            return animation;
+        }
+        return nil;
+    }
+    return [super actionForKey:event];
 }
 
 @end
