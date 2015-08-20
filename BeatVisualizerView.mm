@@ -212,7 +212,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
     if(self.type == self.type)
         [self redraw];
     [CATransaction commit];
-}*/
+}
 
 -(void)pause {
 
@@ -227,9 +227,9 @@ static UIColor* colorWithString(NSString * stringToConvert)
                 animations:^{
                     self.alpha = self.transparency;
         }];
-}
+}*/
 
--(void)updateWithLevel:(CGFloat)level withData:(NSMutableArray*)data withLength:(NSInteger)length withMag:(double)mag withVol:(CGFloat)vol withType:(CGFloat)type
+-(void)updateWithLevel:(CGFloat)level withData:(NSMutableArray*)data withLength:(NSInteger)length withVol:(CGFloat)vol withType:(CGFloat)type
 {
     self.phase += self.phaseShift;
     self.volume = vol;
@@ -238,8 +238,6 @@ static UIColor* colorWithString(NSString * stringToConvert)
     float value = meterTable.ValueAt( 20.0f * log10(level*vol));
     self.siriAmplitude = fmax(value, self.idleAmplitude);
     self.amplitude = self.siriAmplitude * self.bounds.size.height;
-
-    self.alpha = self.transparency;
 
     @synchronized(self)
     {
@@ -258,7 +256,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
     for( int i=0; i < self.waves.count; i++)
     {
-       CGFloat val = [[self.waves objectAtIndex:i] floatValue]*1.03;
+       CGFloat val = [[self.waves objectAtIndex:i] floatValue]*1.06;
 
         if(val > self.bounds.size.height)
             [discard addIndex:i];

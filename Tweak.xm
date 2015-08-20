@@ -48,6 +48,7 @@ static float leftVol = 0.0f;
 static float rightVol = 0.0f;
 static float avgVol = 0.0;
 static float playerVolume = 1.0;
+static BOOL shouldUpdatePrismDefaults = YES;
 static NSMutableArray * fftData = nil;
 static NSMutableArray * lsfftData = nil;
 static NSMutableArray * outData = nil;
@@ -158,7 +159,29 @@ static UIColor* colorWithString(NSString * stringToConvert)
 			mp = [rc player];
 		}
 
-		if(pastStatus != [mp rate])
+		appState = [[UIApplication sharedApplication] applicationState];
+		if([mp rate]==0)
+		{
+			if([BeatVisualizerView sharedInstance].alpha==(transparency/100.0))
+			{
+				[UIView animateWithDuration:.4
+					animations:^{
+						[BeatVisualizerView sharedInstance].alpha = 0;
+					}];
+			}
+			//If player is paused and audio was going through springboard, stop from sb get audio
+			if(appState == 0)
+				return;
+		}
+
+		if([BeatVisualizerView sharedInstance].alpha==0)
+		{
+			[UIView animateWithDuration:.4
+				animations:^{
+					[BeatVisualizerView sharedInstance].alpha = (transparency/100.0);
+				}];
+		}
+		/*if(pastStatus != [mp rate])
 		{
 			if([mp rate] ==0 )
 			{
@@ -175,31 +198,33 @@ static UIColor* colorWithString(NSString * stringToConvert)
 		if([mp rate] == 0)
 			pastStatus = 0;
 		else
-			pastStatus = 1;
+			pastStatus = 1;*/
 
 		NSArray * spectrumData = [notification.userInfo objectForKey:@"spectrumData"];
 		avgVol = [[notification.userInfo objectForKey:@"avgVol"] floatValue];
 		NSInteger length = [[notification.userInfo objectForKey:@"spectrumDataLength"] intValue];
 		playerVolume = [[[mp avPlayer] _player] volume];
 
-		appState = [[UIApplication sharedApplication] applicationState];
-
 		//state = 0 -> inside the app
 		//state = 1 -> on the springboard
 		//state = 2 -> on the lockscreen
 		if(appState == 0)//appState = 0 when we are in the app, thus update
 		{
-			[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
-			[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
-			[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
-			[[BeatVisualizerView sharedInstance] setTransparency:(transparency/100.0)];
-			[[BeatVisualizerView sharedInstance] setBarHeight:(barHeight/100.0)];
-			[[BeatVisualizerView sharedInstance] setOverlayAlbumArt:overlayAlbumArt];
-			[[BeatVisualizerView sharedInstance] setOverlayColor:overlayColor];
-			[[BeatVisualizerView sharedInstance] setColorStyle:colorStyle];
-			[[BeatVisualizerView sharedInstance] setSpectrumStyle:spectrumStyle];
-			[[BeatVisualizerView sharedInstance] setNumBars:spectrumBarCount];
-			[[BeatVisualizerView sharedInstance] updateWithLevel:avgVol withData:spectrumData withLength:length withMag:mag withVol:playerVolume withType:theme];
+			if(shouldUpdatePrismDefaults)
+			{
+				[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
+				[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
+				[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
+				[[BeatVisualizerView sharedInstance] setAlpha:(transparency/100.0)];
+				[[BeatVisualizerView sharedInstance] setBarHeight:(barHeight/100.0)];
+				[[BeatVisualizerView sharedInstance] setOverlayAlbumArt:overlayAlbumArt];
+				[[BeatVisualizerView sharedInstance] setOverlayColor:overlayColor];
+				[[BeatVisualizerView sharedInstance] setColorStyle:colorStyle];
+				[[BeatVisualizerView sharedInstance] setSpectrumStyle:spectrumStyle];
+				[[BeatVisualizerView sharedInstance] setNumBars:spectrumBarCount];
+			}
+
+			[[BeatVisualizerView sharedInstance] updateWithLevel:avgVol withData:spectrumData withLength:length withVol:playerVolume withType:theme];
 		} 
 		else if (appState == 2)
 		{
@@ -749,7 +774,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 	if(dict[@"fftData"] && [dict[@"fftData"] isKindOfClass:[NSMutableArray class]])
 		fftData = dict[@"fftData"];
 
-	if(pastStatus != [[%c(SBMediaController) sharedInstance] isPaused])
+	/*if(pastStatus != [[%c(SBMediaController) sharedInstance] isPaused])
 	{
 		if([[%c(SBMediaController) sharedInstance] isPaused])
 			[[BeatVisualizerView sharedInstance] pause];
@@ -757,19 +782,43 @@ static UIColor* colorWithString(NSString * stringToConvert)
 			[[BeatVisualizerView sharedInstance] play];
 	}
 
-	pastStatus = [[%c(SBMediaController) sharedInstance] isPaused];
+	pastStatus = [[%c(SBMediaController) sharedInstance] isPaused];*/
 
-	[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
-	[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
-	[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
-	[[BeatVisualizerView sharedInstance] setTransparency:(transparency/100.0)];
-	[[BeatVisualizerView sharedInstance] setBarHeight:(barHeight/100.0)];
-	[[BeatVisualizerView sharedInstance] setOverlayAlbumArt:overlayAlbumArt];
-	[[BeatVisualizerView sharedInstance] setOverlayColor:overlayColor];
-	[[BeatVisualizerView sharedInstance] setColorStyle:colorStyle];
-	[[BeatVisualizerView sharedInstance] setSpectrumStyle:spectrumStyle];
-	[[BeatVisualizerView sharedInstance] setNumBars:spectrumBarCount];
-	[[BeatVisualizerView sharedInstance] updateWithLevel:avgVol withData:fftData withLength:outDataLength withMag:mag withVol:playerVolume withType:theme];
+	if([[%c(SBMediaController) sharedInstance] isPaused])
+	{
+		if([BeatVisualizerView sharedInstance].alpha==(transparency/100.0))
+		{
+			[UIView animateWithDuration:.4
+				animations:^{
+					[BeatVisualizerView sharedInstance].alpha = 0;
+				}];
+		}
+		return;
+	}
+
+	if([BeatVisualizerView sharedInstance].alpha==0)
+	{
+		[UIView animateWithDuration:.4
+			animations:^{
+				[BeatVisualizerView sharedInstance].alpha = (transparency/100.0);
+			}];
+	}
+
+	if(shouldUpdatePrismDefaults)
+	{
+		[[BeatVisualizerView sharedInstance] setBeatPrimaryColor:beatPrimaryColor];
+		[[BeatVisualizerView sharedInstance] setBeatSecondaryColor:beatSecondaryColor];
+		[[BeatVisualizerView sharedInstance] setSpectrumPrimaryColor:spectrumPrimaryColor];
+		[[BeatVisualizerView sharedInstance] setAlpha:(transparency/100.0)];
+		[[BeatVisualizerView sharedInstance] setBarHeight:(barHeight/100.0)];
+		[[BeatVisualizerView sharedInstance] setOverlayAlbumArt:overlayAlbumArt];
+		[[BeatVisualizerView sharedInstance] setOverlayColor:overlayColor];
+		[[BeatVisualizerView sharedInstance] setColorStyle:colorStyle];
+		[[BeatVisualizerView sharedInstance] setSpectrumStyle:spectrumStyle];
+		[[BeatVisualizerView sharedInstance] setNumBars:spectrumBarCount];
+	}
+
+	[[BeatVisualizerView sharedInstance] updateWithLevel:avgVol withData:fftData withLength:outDataLength withVol:playerVolume withType:theme];
 }
 
 - (void)layoutSubviews
@@ -886,6 +935,8 @@ static void loadPrefs()
 	} else {
 		barHeight = 100;
 	}
+
+	shouldUpdatePrismDefaults = YES;
 }
 
 %ctor

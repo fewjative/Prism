@@ -14,7 +14,7 @@
 
 @interface BeatVisualizerView : UIView
 
--(void)updateWithLevel:(CGFloat)level withData:(NSMutableArray*)data withLength:(NSInteger)length withMag:(double)mag withVol:(CGFloat)vol withType:(CGFloat)type;
+-(void)updateWithLevel:(CGFloat)level withData:(NSMutableArray*)data withLength:(NSInteger)length withVol:(CGFloat)vol withType:(CGFloat)type;
 +(instancetype)sharedInstance;
 -(void)toggleVisibility;
 -(void)pause;
