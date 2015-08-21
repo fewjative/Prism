@@ -42,7 +42,6 @@
 
 -(void)beginRecordingAudioFromTrack:(AVAssetTrack*)audioTrack
 {
-    NSLog(@"[PrismAudioManager]beginRecordingAudioFromTrack");
     MTAudioProcessingTapRef tap;
     MTAudioProcessingTapCallbacks callbacks;
     callbacks.version = kMTAudioProcessingTapCallbacksVersion_0;

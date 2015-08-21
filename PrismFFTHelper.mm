@@ -117,7 +117,7 @@ static const UInt32 PrismFFTHelperMaxBlocksBeforeSkipping = 4;
         NSMutableArray * outData = [NSMutableArray new];
         [outData addObject:[NSNumber numberWithFloat:0]];
 
-        for(UInt32 i=1; i < _numberOfSamples/2; i++)//originally context->numSamples
+        for(UInt32 i=1; i < _numberOfSamples/2; i++)
         {
             float power = sqrtf(_split.realp[i] * _split.realp[i] + _split.imagp[i] * _split.imagp[i]);     
             [outData addObject:[NSNumber numberWithFloat:power]];

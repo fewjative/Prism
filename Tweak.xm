@@ -117,7 +117,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
 -(void)_itemDidChange:(id)arg1{
 	%orig;
-	NSLog(@"[Prism]Changing the item.");
+	NSLog(@"[Prism]Changing the music item.");
 
 	if(!tweakEnabled)
 	{
@@ -128,10 +128,10 @@ static UIColor* colorWithString(NSString * stringToConvert)
 	[[NSNotificationCenter defaultCenter] removeObserver:self name:@"didChangeSpectrumData" object:nil];
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didChangeSpectrumData:) name:@"didChangeSpectrumData" object:nil];
 
-	if([self.currentItem playerItem].audioMix==nil)
+	if([self.currentItem playerItem].audioMix == nil)
 	{
 		//Audio is not coming from the music app if the sharedAVPlayer is nil
-		if([%c(MusicAVPlayer) sharedAVPlayer]==nil)
+		if([%c(MusicAVPlayer) sharedAVPlayer] == nil)
 			return;
 		else
 			[[PrismAudioManager defaultManager] tapStreamFromItem:[self currentItem]];
@@ -248,7 +248,12 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
 -(void)setNowPlayingInfo:(id)info{
 	%orig;
-	NSLog(@"[Prism]setNowPlayingInfo");
+
+	if(!tweakEnabled)
+	{
+		NSLog(@"[Prism]Tweak is not enabled, will not attempt to generate colors.");
+		return;
+	}
 
 	NSString * ident = [[[%c(SBMediaController) sharedInstance] nowPlayingApplication] bundleIdentifier];
 
@@ -256,7 +261,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 	{
 		if(![ident isEqualToString:@"com.apple.Music"])
 		{
-			NSLog(@"[Prism]Audio is not from the music app, exiting.");
+			NSLog(@"[Prism]Audio is not from the music app, quitting attempt to generate colors.");
 			return;
 		}
 	}
@@ -431,7 +436,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 	    }
 
 		[[BeatVisualizerView sharedInstance] setFrame:self.bounds];
-		//NSLog(@"[Prism]Added visualizer to the Music App.: %@", self);
+		NSLog(@"[Prism]Added visualizer to the Music App.: %@", self);
 	    [self addSubview:[BeatVisualizerView sharedInstance]];
 
 		BOOL added = NO;
@@ -682,7 +687,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 	{
 		[[BeatVisualizerView sharedInstance] removeFromSuperview];
 		[[BeatVisualizerView sharedInstance] setFrame:self.bounds];
-		//NSLog(@"[Prism]Added visualizer to the Music App.");
+		NSLog(@"[Prism]Added visualizer to the Music App, %@", self);
 	    [self addSubview:[BeatVisualizerView sharedInstance]];
 	}
 }
@@ -705,7 +710,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
 - (id)initWithFrame:(CGRect)frame
 {
-	NSLog(@"[Prism]LockScreen initWithFrame");
+	//NSLog(@"[Prism]LockScreen initWithFrame");
 	id orig = %orig;
 
 	if(!tweakEnabled)
@@ -716,10 +721,11 @@ static UIColor* colorWithString(NSString * stringToConvert)
 	if(ident)
 	{
 		if(![ident isEqualToString:@"com.apple.Music"])
+		{
+			NSLog(@"[Prism]Tweak is enabled but audio is not coming from the stock Music application.");
 			return orig;
+		}
 	}
-
-	NSLog(@"[Prism]Tweak is enabled and audio coming from stock Music");
 
 	if(!messagingCenter)
 	{
@@ -731,7 +737,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 		rocketbootstrap_distributedmessagingcenter_apply(messagingCenter);
 		[messagingCenter runServerOnCurrentThread];
 		[messagingCenter registerForMessageName:@"getAudioData" target:self selector:@selector(getAudioData:withUserInfo:)]; 
-		[messagingCenter registerForMessageName:@"getColorData" target:self selector:@selector(getColorData:withUserInfo:)];
+		//[messagingCenter registerForMessageName:@"getColorData" target:self selector:@selector(getColorData:withUserInfo:)];
 	}
 
 	BOOL added = NO;
@@ -823,7 +829,6 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
 - (void)layoutSubviews
 {
-	NSLog(@"[Prism]LockScreen layoutSubviews");
 	%orig;
 
 	if(useDefaultLS || !tweakEnabled)
@@ -837,12 +842,10 @@ static UIColor* colorWithString(NSString * stringToConvert)
 			return;
 	}
 
-	NSLog(@"[Prism]Tweak is enabled and audio coming from stock Music");
-
 	useDefaultLS = YES;
 	[[BeatVisualizerView sharedInstance] removeFromSuperview];
 	[[BeatVisualizerView sharedInstance] setFrame:[self artworkView].frame];
-	NSLog(@"[Prism]Added BeatVisualizerView to the LockScreen");
+	NSLog(@"[Prism]Added visualizer to the LockScreen, %@", self);
     [self addSubview:[BeatVisualizerView sharedInstance]];
     useDefaultLS = NO;
 }
@@ -863,9 +866,9 @@ static void loadPrefs()
 	}
 
 	if (tweakEnabled) {
-        //NSLog(@"[Prism]is enabled");
+        NSLog(@"[Prism]is enabled");
     } else {
-        //NSLog(@"[Prism]is NOT enabled");
+        NSLog(@"[Prism]is NOT enabled");
     }
 
     if([settings objectForKey:@"colorStyle"]) {
@@ -941,7 +944,7 @@ static void loadPrefs()
 
 %ctor
 {
-	//NSLog(@"[Prism]Loading Prism");
+	NSLog(@"[Prism]Loading Prism");
 	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
                                 NULL,
                                 (CFNotificationCallback)loadPrefs,

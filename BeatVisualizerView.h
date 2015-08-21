@@ -42,6 +42,7 @@
 @property (nonatomic, assign) CGFloat primaryWaveLineWidth;
 @property (nonatomic, assign) CGFloat transparency;
 @property (nonatomic, assign) CGFloat type;
+@property (nonatomic, assign) CGFloat level;
 @property (nonatomic, assign) NSInteger colorStyle;
 @property (nonatomic, assign) BOOL overlayAlbumArt;
 @property (nonatomic, assign) NSInteger numBars;
@@ -63,8 +64,6 @@
 @property (nonatomic, assign) CGFloat waveThreshold;
 @property (nonatomic, assign) BOOL createWave;
 @property (nonatomic, assign) CGFloat density;
-@property (nonatomic, assign) CGFloat phaseShift;
-@property (nonatomic, assign) CGFloat phase;
 @property (nonatomic, assign) NSUInteger numberOfWaves;
 @property (nonatomic, assign) NSInteger displayWave;
 @property (nonatomic, assign) NSInteger spectrumStyle;

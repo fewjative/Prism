@@ -70,7 +70,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
 - (void)setup
 {
-    NSLog(@"[Prism]Visualizer setup started");
+    NSLog(@"[Prism]Visualizer setup started.");
     self.primaryColor = [UIColor cyanColor];
     self.secondaryColor = [UIColor magentaColor];
     self.colorFlowPrimary = [UIColor blackColor];
@@ -106,15 +106,15 @@ static UIColor* colorWithString(NSString * stringToConvert)
     self.frequency = 1.0f;
     self.amplitude = 1.0f;
     self.numberOfWaves = 5;
-    self.phaseShift = -0.15f;
     self.density = 5.0f;
     self.primaryWaveLineWidth = 3.0f;
     self.secondaryWaveLineWidth = 1.0f;
     self.spectrumStyle = 0;
     self.isVisible = NO;
     self.outDataLength = 1024;
+    self.level = 0.0;
 
-    self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(setNeedsDisplay)];
+    self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(processAndDisplay)];
     [self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
 
     /*self.waveformLayer = [AudioPlotWaveformLayer layer];
@@ -161,7 +161,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
     //self.points = (CGPoint*)calloc(8192, sizeof(CGPoint));
     //self.pointCount = 100;
-    NSLog(@"[Prism]Visualizer setup ended");
+    NSLog(@"[Prism]Visualizer setup ended.");
 }
 
 -(void)dealloc {
@@ -231,14 +231,11 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
 -(void)updateWithLevel:(CGFloat)level withData:(NSMutableArray*)data withLength:(NSInteger)length withVol:(CGFloat)vol withType:(CGFloat)type
 {
-    self.phase += self.phaseShift;
     self.volume = vol;
     self.outDataLength = length;
     self.type = type;
-    float value = meterTable.ValueAt( 20.0f * log10(level*vol));
-    self.siriAmplitude = fmax(value, self.idleAmplitude);
-    self.amplitude = self.siriAmplitude * self.bounds.size.height;
-
+    self.level = level;
+    
     @synchronized(self)
     {
         if(self.outData.count > 2)
@@ -251,29 +248,39 @@ static UIColor* colorWithString(NSString * stringToConvert)
             [self.outData addObject:data];
         }
     }
+}
 
-    NSMutableIndexSet *discard = [NSMutableIndexSet indexSet];
+-(void)processAndDisplay {
 
-    for( int i=0; i < self.waves.count; i++)
+    if(self.type == 0)
     {
-       CGFloat val = [[self.waves objectAtIndex:i] floatValue]*1.06;
+        float value = meterTable.ValueAt( 20.0f * log10(self.level*self.volume));
+        self.siriAmplitude = fmax(value, self.idleAmplitude);
+        self.amplitude = self.siriAmplitude * self.bounds.size.height;
 
-        if(val > self.bounds.size.height)
-            [discard addIndex:i];
-        else
-            [self.waves replaceObjectAtIndex:i withObject: [NSNumber numberWithFloat:val]];
+        NSMutableIndexSet *discard = [NSMutableIndexSet indexSet];
+
+        for( int i=0; i < self.waves.count; i++)
+        {
+           CGFloat val = [[self.waves objectAtIndex:i] floatValue]*1.02;
+
+            if(val > self.bounds.size.height)
+                [discard addIndex:i];
+            else
+                [self.waves replaceObjectAtIndex:i withObject: [NSNumber numberWithFloat:val]];
+        }
+
+        [self.waves removeObjectsAtIndexes:discard];
+
+        if(self.amplitude > (self.priorAmplitude + self.waveThreshold))
+        {
+            NSNumber * num = [NSNumber numberWithFloat:self.amplitude/2.0];
+            [self.waves addObject:num];
+        }
+
+        self.priorAmplitude = self.amplitude;
     }
-
-    [self.waves removeObjectsAtIndexes:discard];
-
-    if(self.amplitude > (self.priorAmplitude + self.waveThreshold))
-    {
-        NSNumber * num = [NSNumber numberWithFloat:self.amplitude/2.0];
-        [self.waves addObject:num];
-    }
-
-    self.priorAmplitude = self.amplitude;
-
+    
     [self setColors];
 
     /*if(2 == 2.0 )
@@ -282,6 +289,8 @@ static UIColor* colorWithString(NSString * stringToConvert)
         [self redraw];
         return;
     }*/
+    //self.type = 3.0;
+    [self setNeedsDisplay];
 }
 
 -(void)setColors {
@@ -313,7 +322,6 @@ static UIColor* colorWithString(NSString * stringToConvert)
         }
     }
 
-
     if(!self.isVisible)
         return;
 
@@ -333,8 +341,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
     {
         int num_circles = 8;
         int bin_size = floor(self.outDataLength/num_circles);
-        CGRect barRect;
-        CGFloat minWidth = rect.size.height/4.0;
+
         for(int i=0; i < num_circles/2; i++)
         {
             self.sum = 0;
@@ -524,9 +531,124 @@ static UIColor* colorWithString(NSString * stringToConvert)
             [barPath fill];
         }
     }
+    else if(self.type == 3.0)
+    {
+        UIColor * backgroundColor = [UIColor clearColor];
+        UIColor * barBackgroundColor = [UIColor colorWithRed:1.f green:1.f blue:1.f alpha:0.2f];
+        UIColor * barFillColor = [UIColor colorWithRed:0.98f green:0.36f blue:0.36f alpha:1.f];
+
+        CGFloat columnMargin = 1.f;
+        CGFloat columnWidth = 24.f;
+        BOOL showsBlocks = YES;
+
+        NSUInteger count = currentSpectrumData.count;
+        CGFloat maxWidth = rect.size.width;
+        CGFloat maxHeight = rect.size.height;
+        
+        CGFloat offset = columnMargin;
+        CGFloat width = columnWidth;
+
+        CGFloat screenScale = [[UIScreen mainScreen] scale];
+
+        const CGFloat kDefaultMinDbLevel = -40.f;
+        const CGFloat kDefaultMinDbFS = -110.f;
+        const CGFloat kDBLogFactor = 4.0f;
+                
+        if (width <= 0.f)
+        {
+            if (count > 0)
+            {
+                width = (maxWidth - (count - 1) * offset) / count;
+                width = floorf(width);
+            }
+        }
+        
+        CGFloat restSpace = maxWidth - (count * width + (count - 1) * offset);
+        CGFloat x = restSpace/2.f;
+        
+        if (showsBlocks)
+        {
+            int blocksCount = maxHeight/width;
+            
+            if (blocksCount > 0)
+            {
+                CGFloat lineWidth = 1.f/screenScale;
+                CGFloat y = rect.size.height + lineWidth;
+                                
+                UIBezierPath *clipBezierPath = [UIBezierPath bezierPath];
+
+                for (int i = 0; i < blocksCount; i++)
+                {
+                    [clipBezierPath appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(0.f, y, maxWidth, width)]];
+                    
+                    y -= width + lineWidth;
+                }
+             
+                [clipBezierPath closePath];
+                [clipBezierPath addClip];
+            }
+        }
+        
+        UIBezierPath *barBackgroundPath = [UIBezierPath bezierPath];
+        UIBezierPath *barFillPath = [UIBezierPath bezierPath];
+
+        for (int i = 0; i < count; i++)
+        {
+            CGRect frame = CGRectMake(x, 0.f, width, maxHeight);
+            
+            [barBackgroundPath appendPath:[UIBezierPath bezierPathWithRect:frame]];
+
+            CGFloat floatValue = [[currentSpectrumData objectAtIndex:i] floatValue];
+
+            if (!isnan(floatValue))
+            {
+
+                //CGFloat scaled_avg = floatValue * (rect.size.height/1.5) * self.volume;
+                CGFloat scaled_avg = floatValue * (maxHeight/1.5) * self.volume;
+                //self.scaled_avg = (self.avg / self.mag ) * frameHeight * self.volume;
+
+                if(scaled_avg > maxHeight)
+                    scaled_avg = maxHeight;
+
+                floatValue = scaled_avg;
+
+                /*CGFloat height = 0.f;
+
+                if (floatValue <= kDefaultMinDbLevel)
+                {
+                    height = 1.f/screenScale;
+                }
+                else if (floatValue >= 0)
+                {
+                    height = maxHeight - 1.f/screenScale;
+                }
+                else
+                {
+                    float normalizedValue = (kDefaultMinDbLevel - floatValue)/kDefaultMinDbLevel;
+    //                normalizedValue = pow(normalizedValue, 1.0/kDBLogFactor);
+                    height = floor(normalizedValue * maxHeight) + 0.5f;
+                    
+    //                NSLog(@"db: %8.4f, h: %8.4f", floatValue, normalizedValue);
+                }*/
+                
+                frame.origin.y = maxHeight - floatValue;
+                frame.size.height = floatValue;
+                
+                [barFillPath appendPath:[UIBezierPath bezierPathWithRect:frame]];
+            }
+            
+            x += width + offset;
+        }
+        
+        [barBackgroundColor setFill];
+        [barBackgroundPath fill];
+        
+        [barFillColor setFill];
+        [barFillPath fill];
+    }
     else
     {
-        NSLog(@"[Prism]Not a valid type");
+        //NSLog(@"[Prism]Not a valid type");
     }
 }
 
