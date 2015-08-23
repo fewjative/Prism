@@ -164,7 +164,20 @@ static UIColor* colorWithString(NSString * stringToConvert)
     NSLog(@"[Prism]Visualizer setup ended.");
 }
 
+-(void)validateDisplayLink {
+
+    if(self.displayLink.duration ==  0)
+    {
+        [self.displayLink invalidate];
+        self.displayLink = nil;
+
+        self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(processAndDisplay)];
+        [self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+    }
+}
+
 -(void)dealloc {
+    NSLog(@"[Prism]BeatVisualizerView dealloc");
     [self.displayLink invalidate];
     self.displayLink = nil;
 }
@@ -248,6 +261,8 @@ static UIColor* colorWithString(NSString * stringToConvert)
             [self.outData addObject:data];
         }
     }
+
+    [self validateDisplayLink];
 }
 
 -(void)processAndDisplay {

@@ -88,8 +88,6 @@ static PrismSettingsListController * pslc = nil;
 
 -(void)selectOverlayColor {
 
-	PFColorAlert * alert = [PFColorAlert new];
-
 	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
 	UIColor * startColor = nil;
 
@@ -99,7 +97,9 @@ static PrismSettingsListController * pslc = nil;
 		startColor = [UIColor colorWithRed:0.769 green:0.286 blue:0.008 alpha:0.75];;
 	}
 
-	[alert showWithStartColor:startColor showAlpha:YES completion:^void(UIColor *pickedColor) {
+	PFColorAlert * alert = [PFColorAlert colorAlertWithStartColor:startColor showAlpha:YES];
+
+	[alert displayWithCompletion:^void(UIColor *pickedColor) {
 		NSString * hexString = [UIColor hexFromColor:pickedColor];
 		hexString = [NSString stringWithFormat:@"%@:%g", hexString, pickedColor.alpha];
 
@@ -146,8 +146,6 @@ static PrismSettingsListController * pslc = nil;
 
 -(void)selectPrimaryColor {
 
-	PFColorAlert * alert = [PFColorAlert new];
-
 	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
 	UIColor * startColor = nil;
 
@@ -157,7 +155,9 @@ static PrismSettingsListController * pslc = nil;
 		startColor = [UIColor colorWithRed:0.769 green:0.286 blue:0.008 alpha:0.75];;
 	}
 
-	[alert showWithStartColor:startColor showAlpha:YES completion:^void(UIColor *pickedColor) {
+	PFColorAlert * alert = [PFColorAlert colorAlertWithStartColor:startColor showAlpha:YES];
+
+	[alert displayWithCompletion:^void(UIColor *pickedColor) {
 		NSString * hexString = [UIColor hexFromColor:pickedColor];
 		hexString = [NSString stringWithFormat:@"%@:%g", hexString, pickedColor.alpha];
 
@@ -166,8 +166,6 @@ static PrismSettingsListController * pslc = nil;
 }
 
 -(void)selectSecondaryColor {
-
-	PFColorAlert * alert = [PFColorAlert new];
 
 	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
 	UIColor * startColor = nil;
@@ -178,7 +176,9 @@ static PrismSettingsListController * pslc = nil;
 		startColor = [UIColor colorWithRed:0.769 green:0.286 blue:0.008 alpha:0.75];;
 	}
 
-	[alert showWithStartColor:startColor showAlpha:YES completion:^void(UIColor *pickedColor) {
+	PFColorAlert * alert = [PFColorAlert colorAlertWithStartColor:startColor showAlpha:YES];
+
+	[alert displayWithCompletion:^void(UIColor *pickedColor) {
 		NSString * hexString = [UIColor hexFromColor:pickedColor];
 		hexString = [NSString stringWithFormat:@"%@:%g", hexString, pickedColor.alpha];
 
@@ -226,8 +226,6 @@ static PrismSettingsListController * pslc = nil;
 
 -(void)selectPrimaryColor {
 
-	PFColorAlert * alert = [PFColorAlert new];
-
 	NSDictionary *settings = [NSDictionary dictionaryWithContentsOfFile:prefPath];
 	UIColor * startColor = nil;
 
@@ -237,7 +235,9 @@ static PrismSettingsListController * pslc = nil;
 		startColor = [UIColor colorWithRed:0.769 green:0.286 blue:0.008 alpha:0.75];;
 	}
 
-	[alert showWithStartColor:startColor showAlpha:YES completion:^void(UIColor *pickedColor) {
+	PFColorAlert * alert = [PFColorAlert colorAlertWithStartColor:startColor showAlpha:YES];
+
+	[alert displayWithCompletion:^void(UIColor *pickedColor) {
 		NSString * hexString = [UIColor hexFromColor:pickedColor];
 		hexString = [NSString stringWithFormat:@"%@:%g", hexString, pickedColor.alpha];
 

@@ -208,7 +208,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 		//state = 0 -> inside the app
 		//state = 1 -> on the springboard
 		//state = 2 -> on the lockscreen
-		if(appState == 0)//appState = 0 when we are in the app, thus update
+		if(appState == 0)
 		{
 			if(shouldUpdatePrismDefaults)
 			{
@@ -407,7 +407,51 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
 %hook MPUSlantedTextPlaceholderArtworkView
 
--(void)setPlaceholderTitle:(NSString*)title{
+- (void)layoutSubviews
+{
+	%orig;
+
+	if(useDefaultLS || !tweakEnabled)
+		return;
+
+	UIView * superview = [self superview];
+
+	if(!superview)
+		return;
+
+	UIViewController * vc = MSHookIvar<UIViewController*>(superview,"_viewDelegate");
+
+	if(vc && [vc isKindOfClass:[%c(MusicNowPlayingViewController) class]])
+	{
+		useDefaultLS = YES;
+		BOOL added = NO;
+		for (UIGestureRecognizer * recognizer in self.gestureRecognizers) {
+			if([recognizer isKindOfClass:[%c(UILongPressGestureRecognizer) class]])
+				added = YES;
+		}
+
+	    if(!added)
+	    {
+	    	UIGestureRecognizer * longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
+	    	[self addGestureRecognizer:longPress];
+	    }
+
+		for (UIView * view in self.subviews) {
+	    	if([view isKindOfClass:[%c(BeatVisualizerView) class]])
+	    	{
+	    		useDefaultLS = NO;
+	    		return;
+	    	}
+	    }
+
+		[[BeatVisualizerView sharedInstance] setFrame:self.bounds];
+		NSLog(@"[Prism]Added visualizer to the Music App.: %@", self);
+	    [self addSubview:[BeatVisualizerView sharedInstance]];
+	    useDefaultLS = NO;		
+	}
+}
+
+/*-(void)setPlaceholderTitle:(NSString*)title{
 
 	%orig;
 
@@ -451,8 +495,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 	    	[self addGestureRecognizer:longPress];
 	    }
 	}
-}
-
+}*/
 
 %new -(void)longPress:(UILongPressGestureRecognizer*)gesture {
 	if(gesture.state == UIGestureRecognizerStateEnded)
