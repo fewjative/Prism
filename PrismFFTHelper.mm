@@ -1,8 +1,29 @@
 #import <Accelerate/Accelerate.h>
 #import "PrismFFTHelper.h"
+#include <notify.h>
 
 static const UInt32 PrismFFTHelperInputBufferSize  = 2048;
 static const UInt32 PrismFFTHelperMaxBlocksBeforeSkipping = 4;
+static BOOL screenIsBlack = NO;
+static BOOL cancelOperations = YES;
+
+static void screenDisplayStatus(CFNotificationCenterRef center, void* observer, CFStringRef name, const void* object, CFDictionaryRef userInfo) {
+    
+    uint64_t state;
+    int token;
+    notify_register_check("com.apple.iokit.hid.displayStatus", &token);
+    notify_get_state(token, &state);
+    notify_cancel(token);
+    if (state) {
+        screenIsBlack = NO;
+    }else{
+        screenIsBlack = YES;
+    }
+
+    cancelOperations = YES;
+
+    NSLog(@"[PrismFFTHelper] isScreenBlack?: %ld", screenIsBlack);
+}
 
 @interface PrismFFTHelper ()
 {
@@ -46,6 +67,11 @@ static const UInt32 PrismFFTHelperMaxBlocksBeforeSkipping = 4;
 
         _operationQueue = [NSOperationQueue new];
         _operationQueue.maxConcurrentOperationCount = 1;
+
+        self.screenIsBlack = NO;
+
+        NSLog(@"[PrismFFTHelper]Adding display status observer.");
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, screenDisplayStatus, CFSTR("com.apple.iokit.hid.displayStatus"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
     }
 
     return self;
@@ -69,9 +95,17 @@ static const UInt32 PrismFFTHelperMaxBlocksBeforeSkipping = 4;
         return;
     }
 
-    if(self.operationQueue.operationCount > 1)
+    self.screenIsBlack = screenIsBlack;
+
+    if(self.operationQueue.operationCount > 1 || cancelOperations || self.screenIsBlack)
     {
         [self.operationQueue cancelAllOperations];
+        cancelOperations = NO;
+    }
+
+    if(self.screenIsBlack)
+    {
+        return;
     }
 
     [self.operationQueue addOperationWithBlock:^

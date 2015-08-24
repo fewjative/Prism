@@ -322,6 +322,9 @@ static UIColor* colorWithString(NSString * stringToConvert)
 
 - (void)drawRect:(CGRect)rect
 {   
+    if(!self.isVisible)
+        return;
+
     NSArray * currentSpectrumData = nil;
 
     @synchronized(self)
@@ -336,9 +339,6 @@ static UIColor* colorWithString(NSString * stringToConvert)
             [self.outData removeObjectAtIndex:0];
         }
     }
-
-    if(!self.isVisible)
-        return;
 
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGContextClearRect(context, self.bounds);
