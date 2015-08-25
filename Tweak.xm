@@ -199,7 +199,6 @@ static UIColor* colorWithString(NSString * stringToConvert)
 			pastStatus = 0;
 		else
 			pastStatus = 1;*/
-
 		NSArray * spectrumData = [notification.userInfo objectForKey:@"spectrumData"];
 		avgVol = [[notification.userInfo objectForKey:@"avgVol"] floatValue];
 		NSInteger length = [[notification.userInfo objectForKey:@"spectrumDataLength"] intValue];
@@ -222,6 +221,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 				[[BeatVisualizerView sharedInstance] setColorStyle:colorStyle];
 				[[BeatVisualizerView sharedInstance] setSpectrumStyle:spectrumStyle];
 				[[BeatVisualizerView sharedInstance] setNumBars:spectrumBarCount];
+				shouldUpdatePrismDefaults = NO;
 			}
 
 			[[BeatVisualizerView sharedInstance] updateWithLevel:avgVol withData:spectrumData withLength:length withVol:playerVolume withType:theme];
@@ -865,6 +865,7 @@ static UIColor* colorWithString(NSString * stringToConvert)
 		[[BeatVisualizerView sharedInstance] setColorStyle:colorStyle];
 		[[BeatVisualizerView sharedInstance] setSpectrumStyle:spectrumStyle];
 		[[BeatVisualizerView sharedInstance] setNumBars:spectrumBarCount];
+		shouldUpdatePrismDefaults = NO;
 	}
 
 	[[BeatVisualizerView sharedInstance] updateWithLevel:avgVol withData:fftData withLength:outDataLength withVol:playerVolume withType:theme];

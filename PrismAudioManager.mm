@@ -130,7 +130,7 @@ void process(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
                    flagsOut, NULL, numberFramesOut);
     if (err)
     {
-        NSLog(@"[Prism]Error from GetSourceAudio: %ld", err);
+        NSLog(@"[PrismAudioManager]Error from GetSourceAudio: %ld", err);
         return;
     }
 

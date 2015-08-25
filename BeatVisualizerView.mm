@@ -553,12 +553,12 @@ static UIColor* colorWithString(NSString * stringToConvert)
         UIColor * barFillColor = [UIColor colorWithRed:0.98f green:0.36f blue:0.36f alpha:1.f];
 
         CGFloat columnMargin = 1.f;
-        CGFloat columnWidth = 24.f;
+        NSUInteger blocksCount = 19;
         BOOL showsBlocks = YES;
-
         NSUInteger count = currentSpectrumData.count;
         CGFloat maxWidth = rect.size.width;
         CGFloat maxHeight = rect.size.height;
+        CGFloat columnWidth = (maxWidth - (blocksCount-1) * columnMargin) / (float)blocksCount;
         
         CGFloat offset = columnMargin;
         CGFloat width = columnWidth;
@@ -568,98 +568,107 @@ static UIColor* colorWithString(NSString * stringToConvert)
         const CGFloat kDefaultMinDbLevel = -40.f;
         const CGFloat kDefaultMinDbFS = -110.f;
         const CGFloat kDBLogFactor = 4.0f;
-                
-        if (width <= 0.f)
-        {
-            if (count > 0)
-            {
-                width = (maxWidth - (count - 1) * offset) / count;
-                width = floorf(width);
-            }
-        }
-        
+                        
         CGFloat restSpace = maxWidth - (count * width + (count - 1) * offset);
-        CGFloat x = restSpace/2.f;
         
         if (showsBlocks)
         {
-            int blocksCount = maxHeight/width;
-            
-            if (blocksCount > 0)
-            {
-                CGFloat lineWidth = 1.f/screenScale;
-                CGFloat y = rect.size.height + lineWidth;
-                                
-                UIBezierPath *clipBezierPath = [UIBezierPath bezierPath];
+            CGFloat lineWidth = 1.f/screenScale;
+            CGFloat y = rect.size.height - width + lineWidth;
+            CGFloat x = 0.0f;
+                            
+            UIBezierPath *clipBezierPath = [UIBezierPath bezierPath];
 
-                for (int i = 0; i < blocksCount; i++)
-                {
-                    [clipBezierPath appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(0.f, y, maxWidth, width)]];
-                    
-                    y -= width + lineWidth;
-                }
-             
-                [clipBezierPath closePath];
-                [clipBezierPath addClip];
+            for (int i = 0; i < blocksCount; i++)
+            {
+                [clipBezierPath appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(0.f, y, maxWidth, width)]];
+                y -= width + lineWidth;
             }
+         
+            [clipBezierPath closePath];
+            [clipBezierPath addClip];
+
+            clipBezierPath = [UIBezierPath bezierPath];
+
+            for (int i = 0; i < blocksCount; i++)
+            {
+                [clipBezierPath appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, 0.f, width, maxHeight)]];
+                x += width + lineWidth;
+            }
+         
+            [clipBezierPath closePath];
+            [clipBezierPath addClip];
         }
-        
+
         UIBezierPath *barBackgroundPath = [UIBezierPath bezierPath];
         UIBezierPath *barFillPath = [UIBezierPath bezierPath];
+        int bin_size = floor(self.outDataLength/blocksCount);
 
-        for (int i = 0; i < count; i++)
-        {
-            CGRect frame = CGRectMake(x, 0.f, width, maxHeight);
-            
-            [barBackgroundPath appendPath:[UIBezierPath bezierPathWithRect:frame]];
+        [barBackgroundPath appendPath:[UIBezierPath bezierPathWithRect:rect]];
 
-            CGFloat floatValue = [[currentSpectrumData objectAtIndex:i] floatValue];
-
-            if (!isnan(floatValue))
-            {
-
-                //CGFloat scaled_avg = floatValue * (rect.size.height/1.5) * self.volume;
-                CGFloat scaled_avg = floatValue * (maxHeight/1.5) * self.volume;
-                //self.scaled_avg = (self.avg / self.mag ) * frameHeight * self.volume;
-
-                if(scaled_avg > maxHeight)
-                    scaled_avg = maxHeight;
-
-                floatValue = scaled_avg;
-
-                /*CGFloat height = 0.f;
-
-                if (floatValue <= kDefaultMinDbLevel)
-                {
-                    height = 1.f/screenScale;
-                }
-                else if (floatValue >= 0)
-                {
-                    height = maxHeight - 1.f/screenScale;
-                }
-                else
-                {
-                    float normalizedValue = (kDefaultMinDbLevel - floatValue)/kDefaultMinDbLevel;
-    //                normalizedValue = pow(normalizedValue, 1.0/kDBLogFactor);
-                    height = floor(normalizedValue * maxHeight) + 0.5f;
-                    
-    //                NSLog(@"db: %8.4f, h: %8.4f", floatValue, normalizedValue);
-                }*/
-                
-                frame.origin.y = maxHeight - floatValue;
-                frame.size.height = floatValue;
-                
-                [barFillPath appendPath:[UIBezierPath bezierPathWithRect:frame]];
-            }
-            
-            x += width + offset;
-        }
-        
         [barBackgroundColor setFill];
         [barBackgroundPath fill];
+
+        CGFloat interval = maxWidth / (float)10;
         
-        [barFillColor setFill];
-        [barFillPath fill];
+        for(int i=0; i < blocksCount/2; i++)
+        {
+            self.sum = 0;
+            for(int j=0; j < bin_size; j++)
+            {
+                self.sum += [[currentSpectrumData objectAtIndex:((i * bin_size) + j)] floatValue];
+            }
+            self.avg = self.sum/bin_size;
+            self.scaled_avg = (self.avg / self.mag ) * (rect.size.height) * self.volume;
+
+            if(self.scaled_avg != self.scaled_avg)
+            {
+                self.scaled_avg = rect.size.height;
+            }
+
+            if(self.scaled_avg > (rect.size.height))
+                self.scaled_avg = rect.size.height;
+
+            if( self.colorStyle == 0)
+            {
+                [[self.secondaryColor colorWithAlphaComponent:.4f] setFill];
+            }
+            else if(self.colorStyle == 1)
+            {
+                [[self.colorFlowSecondary colorWithAlphaComponent:.4f] setFill];
+            }
+            else if(self.colorStyle == 2)
+            {
+                [[self.prismFlowSecondary colorWithAlphaComponent:.4f] setFill];
+            }
+            else if(self.colorStyle == 3)
+            {
+                [[self.randomColorSecondary colorWithAlphaComponent:.4f] setFill];
+            }
+
+            NSInteger intervalIndex = self.scaled_avg / interval;
+
+            UIBezierPath * temp;
+
+            if(intervalIndex == 0)
+            {
+                CGRect tRect = CGRectMake(maxWidth/2.0 - columnWidth/2.0, maxHeight/2.0 - columnWidth/2.0, columnWidth, columnWidth);
+                temp = [UIBezierPath bezierPathWithRect:tRect];
+            }
+            else
+            {
+                CGRect tRect = CGRectMake(maxWidth/2.0 - ((columnWidth/2.0)*(intervalIndex)), maxHeight/2.0 - ((columnWidth/2.0)*(intervalIndex)), columnWidth*intervalIndex, columnWidth*intervalIndex);
+                temp = [UIBezierPath bezierPathWithRect:tRect]; 
+            }
+          
+            [barFillPath appendPath:temp];
+
+            //temp.lineWidth = 10.0;
+            //[barFillColor setStroke];
+            //[temp stroke];
+            [barFillColor setFill];
+            [barFillPath fill];
+        }
     }
     else
     {
